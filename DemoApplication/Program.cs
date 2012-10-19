@@ -21,16 +21,25 @@ namespace DemoApplication
 
         static void Main()
         {
-            SafeFileHandle safeHandle = CreateFile(@"\\.\CdRom0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
-            DeviceIOControlWrapper deviceIo = new DeviceIOControlWrapper(safeHandle);
+            // Read disk sector size
+            SafeFileHandle hddHandle = CreateFile(@"\\.\PhysicalDrive0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            DeviceIOControlWrapper hddDeviceIo = new DeviceIOControlWrapper(hddHandle);
+
+            DISK_GEOMETRY_EX info = hddDeviceIo.DiskGetDriveGeometryEx();
+
+            Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
+
+            // Open and close CD Rom tray
+            SafeFileHandle cdTrayHandle = CreateFile(@"\\.\CdRom0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            DeviceIOControlWrapper cdTrayDeviceIo = new DeviceIOControlWrapper(cdTrayHandle);
 
             // Open tray
-            deviceIo.StorageEjectMedia();
+            cdTrayDeviceIo.StorageEjectMedia();
 
             Thread.Sleep(TimeSpan.FromSeconds(10));
 
             // Close tray
-            deviceIo.StorageLoadMedia();
+            cdTrayDeviceIo.StorageLoadMedia();
         }
     }
 }
