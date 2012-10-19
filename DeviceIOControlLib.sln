@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceIOControlLib", "DeviceIOControlLib\DeviceIOControlLib.csproj", "{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoApplication", "DemoApplication\DemoApplication.csproj", "{1F9ACFF1-F31F-40E6-9717-E2CE8AF623EA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoApplication", "DemoApplication\DemoApplication.csproj", "{68922CD2-A213-43B5-B6AF-98BB0B37E374}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,10 +15,10 @@ Global
 		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Release|Any CPU.Build.0 = Release|Any CPU
-		{1F9ACFF1-F31F-40E6-9717-E2CE8AF623EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1F9ACFF1-F31F-40E6-9717-E2CE8AF623EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1F9ACFF1-F31F-40E6-9717-E2CE8AF623EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1F9ACFF1-F31F-40E6-9717-E2CE8AF623EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

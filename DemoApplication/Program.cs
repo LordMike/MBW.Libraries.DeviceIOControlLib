@@ -5,7 +5,7 @@ using System.Threading;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
 
-namespace DemoApplication
+namespace TestApplication
 {
     class Program
     {
@@ -29,6 +29,10 @@ namespace DemoApplication
 
             Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
 
+            PARTITION_INFORMATION_EX partitionInfo = hddDeviceIo.DiskGetPartitionInfoEx();
+
+            Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
+
             // Open and close CD Rom tray
             SafeFileHandle cdTrayHandle = CreateFile(@"\\.\CdRom0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
             DeviceIOControlWrapper cdTrayDeviceIo = new DeviceIOControlWrapper(cdTrayHandle);
@@ -36,7 +40,7 @@ namespace DemoApplication
             // Open tray
             cdTrayDeviceIo.StorageEjectMedia();
 
-            Thread.Sleep(TimeSpan.FromSeconds(10));
+            Thread.Sleep(TimeSpan.FromSeconds(2));
 
             // Close tray
             cdTrayDeviceIo.StorageLoadMedia();

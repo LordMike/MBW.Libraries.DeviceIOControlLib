@@ -9,9 +9,8 @@
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>DeviceIOControlLib</RootNamespace>
     <AssemblyName>DeviceIOControlLib</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -35,7 +34,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="DeviceIoControlWrapper.cs" />
+    <Compile Include="DeviceIOControlWrapper.cs" />
     <Compile Include="DeviceIODisk.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="IOControlCode.cs" />
