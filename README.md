@@ -88,6 +88,17 @@ The library is no where near complete, and never will be, as all driver develope
 
 As a design guideline, I intend to put all structures, enums and such in a file called "DeviceIO*.cs" where '*' is the name of the device type. F.ex. all Disk structures and enums are in "DeviceIODisk.cs". The methods themselves are implemented in DeviceIoControlWrapper.cs
 
+I also try best possible, to link to a page describing the details and quirks of each method. F.ex.
+
+    /// <summary>
+    /// Used to f.ex. open/eject CD Rom trays
+    /// <see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363406(v=vs.85).aspx" />
+    /// </summary>
+    public bool StorageEjectMedia()
+    {
+    	return InvokeIoControl(Handle, IOControlCode.StorageEjectMedia);
+    }
+
   [1]: http://technet.microsoft.com/en-us/sysinternals/bb896657.aspx
   [2]: http://msdn.microsoft.com/en-us/library/windows/desktop/aa363858(v=vs.85).aspx
   [3]: http://www.pinvoke.net/default.aspx/kernel32.createfile
