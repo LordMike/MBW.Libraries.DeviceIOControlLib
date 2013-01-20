@@ -79,6 +79,31 @@ namespace TestApplication
 
             DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
 
+            // FS Stats
+            FileSystemStats[] fsStats = volumeDeviceIo.FileSystemGetStatistics();
+
+            for (int i = 0; i < fsStats.Length; i++)
+            {
+                switch (fsStats[i].Stats.FileSystemType)
+                {
+                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_NTFS:
+                        NTFS_STATISTICS ntfsStats = (NTFS_STATISTICS)fsStats[i].FSStats;
+                        Console.WriteLine("Processor {0}: (NTFS)  MFT Reads/Writes: {1,7:N0} / {2,7:N0}", i, ntfsStats.MftReads, ntfsStats.MftWrites);
+                        break;
+                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_FAT:
+                        FAT_STATISTICS fatStats = (FAT_STATISTICS)fsStats[i].FSStats;
+                        Console.WriteLine("Processor {0}: (FAT)   Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, fatStats.NonCachedDiskReads, fatStats.NonCachedDiskWrites);
+                        break;
+                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_EXFAT:
+                        EXFAT_STATISTICS exfatStats = (EXFAT_STATISTICS)fsStats[i].FSStats;
+                        Console.WriteLine("Processor {0}: (EXFAT) Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, exfatStats.NonCachedDiskReads, exfatStats.NonCachedDiskWrites);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+            }
+
+            // Bitmap
             VOLUME_BITMAP_BUFFER bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
 
             Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
@@ -93,7 +118,8 @@ namespace TestApplication
             Console.WriteLine("Allocated clusters: {0:N0}", trues);
             Console.WriteLine("Unallocated clusters: {0:N0}", falses);
 
-            var basePointer = volumeDeviceIo.FileSystemGetRetrievalPointerBase();
+            // NTFS Base LCN (always 0)
+            RETRIEVAL_POINTER_BASE basePointer = volumeDeviceIo.FileSystemGetRetrievalPointerBase();
             Console.WriteLine("Base LCN: {0:N0}", basePointer.FileAreaOffset);
 
             Console.WriteLine();

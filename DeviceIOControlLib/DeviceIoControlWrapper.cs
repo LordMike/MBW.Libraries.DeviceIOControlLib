@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Collections;
 using System.ComponentModel;
@@ -235,7 +236,70 @@ namespace DeviceIOControlLib
         //FsctlEncryptionFsctlIo
         //FsctlEnumUsnData
         //FsctlExtendVolume
-        //FsctlFileSystemGetStatistics
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364565(v=vs.85).aspx"/></summary>
+        public FileSystemStats[] FileSystemGetStatistics()
+        {
+            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlFileSystemGetStatistics, 512);
+            IntPtr dataPtr = IntPtr.Zero;
+
+            FileSystemStats[] res;
+
+            try
+            {
+                dataPtr = Marshal.AllocHGlobal(data.Length);
+                Marshal.Copy(data, 0, dataPtr, data.Length);
+
+                IntPtr currentDataPtr = dataPtr;
+
+                FILESYSTEM_STATISTICS firstStats = (FILESYSTEM_STATISTICS)Marshal.PtrToStructure(currentDataPtr, typeof(FILESYSTEM_STATISTICS));
+
+                int fsStatsSize = Marshal.SizeOf(typeof(FILESYSTEM_STATISTICS));
+
+                int elementSize = (int)firstStats.SizeOfCompleteStructure;
+                int procCount = data.Length / elementSize;
+
+                res = new FileSystemStats[procCount];
+
+                for (int i = 0; i < procCount; i++)
+                {
+                    res[i] = new FileSystemStats();
+                    res[i].Stats = (FILESYSTEM_STATISTICS)Marshal.PtrToStructure(currentDataPtr, typeof(FILESYSTEM_STATISTICS));
+
+                    switch (res[i].Stats.FileSystemType)
+                    {
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_NTFS:
+                            NTFS_STATISTICS ntfsStats = (NTFS_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(NTFS_STATISTICS));
+
+                            res[i].FSStats = ntfsStats;
+
+                            break;
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_FAT:
+                            FAT_STATISTICS fatStats = (FAT_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(FAT_STATISTICS));
+
+                            res[i].FSStats = fatStats;
+                            break;
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_EXFAT:
+                            EXFAT_STATISTICS exFatStats = (EXFAT_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(EXFAT_STATISTICS));
+
+                            res[i].FSStats = exFatStats;
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
+
+                    currentDataPtr += elementSize;
+                }
+            }
+            finally
+            {
+                if (dataPtr != IntPtr.Zero)
+                    Marshal.FreeHGlobal(dataPtr);
+            }
+
+            return res;
+        }
+
         //FsctlFindFilesBySid
         //FsctlGetCompression
         //FsctlGetHfsInformation
@@ -427,43 +491,6 @@ namespace DeviceIOControlLib
         }
 
         /// <summary>
-        /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
-        /// </summary>
-        private static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
-        {
-            uint returnedBytes = 0;
-
-            uint inputSize = (uint)Marshal.SizeOf(input);
-            uint outputLength = 128;
-
-            do
-            {
-                byte[] output = new byte[outputLength];
-                bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-                if (!success)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-
-                    if (lastError == 234)
-                    {
-                        // More data
-                        outputLength += 1000000;
-                        continue;
-                    }
-
-                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-                }
-
-                // Return the result
-                byte[] res = new byte[returnedBytes];
-                Array.Copy(output, res, returnedBytes);
-
-                return res;
-            } while (true);
-        }
-
-        /// <summary>
         /// Calls InvokeIoControl with the specified input, returning a byte array. It allows the caller to handle errors.
         /// </summary>
         private static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
@@ -482,6 +509,78 @@ namespace DeviceIOControlLib
             }
 
             return output;
+        }
+        /// <summary>
+        /// Repeatedly invokes InvokeIoControl, as long as it gets return code 234 ("More data available") from the method.
+        /// </summary>
+        private static byte[] InvokeIoControlUnknownSize(SafeFileHandle handle, IOControlCode controlCode, uint increment = 128)
+        {
+            uint returnedBytes = 0;
+
+            uint outputLength = increment;
+
+            do
+            {
+                byte[] output = new byte[outputLength];
+                bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
+
+                if (!success)
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+
+                    if (lastError == 234)
+                    {
+                        // More data
+                        outputLength += increment;
+                        continue;
+                    }
+
+                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                }
+
+                // Return the result
+                byte[] res = new byte[returnedBytes];
+                Array.Copy(output, res, returnedBytes);
+
+                return res;
+            } while (true);
+        }
+
+        /// <summary>
+        /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
+        /// </summary>
+        private static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128)
+        {
+            uint returnedBytes = 0;
+
+            uint inputSize = (uint)Marshal.SizeOf(input);
+            uint outputLength = increment;
+
+            do
+            {
+                byte[] output = new byte[outputLength];
+                bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
+
+                if (!success)
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+
+                    if (lastError == 234)
+                    {
+                        // More data
+                        outputLength += increment;
+                        continue;
+                    }
+
+                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                }
+
+                // Return the result
+                byte[] res = new byte[returnedBytes];
+                Array.Copy(output, res, returnedBytes);
+
+                return res;
+            } while (true);
         }
     }
 }
