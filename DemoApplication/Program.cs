@@ -79,7 +79,7 @@ namespace TestApplication
 
             DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
 
-            var bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
+            VOLUME_BITMAP_BUFFER bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
 
             Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
 
