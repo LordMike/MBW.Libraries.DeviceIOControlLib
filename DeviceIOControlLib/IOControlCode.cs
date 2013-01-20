@@ -8,6 +8,7 @@ namespace DeviceIOControlLib
     /// Useful links:
     ///     http://www.ioctls.net/
     ///     http://msdn.microsoft.com/en-us/library/windows/hardware/ff543023(v=vs.85).aspx
+    ///     http://sourceforge.net/apps/trac/mingw-w64/browser/experimental/headers_additions_test/include/winioctl.h
     /// </summary>
     [Flags]
     public enum IOControlCode : uint
@@ -115,6 +116,7 @@ namespace DeviceIOControlLib
         FsctlGetNtfsFileRecord = (IOFileDevice.FileSystem << 16) | (26 << 2) | IOMethod.Buffered | (0 << 14),
         FsctlGetVolumeBitmap = (IOFileDevice.FileSystem << 16) | (27 << 2) | IOMethod.Neither | (0 << 14),
         FsctlGetRetrievalPointers = (IOFileDevice.FileSystem << 16) | (28 << 2) | IOMethod.Neither | (0 << 14),
+        FsctlGetRetrievalPointerBase = (IOFileDevice.FileSystem << 16) | (141 << 2) | IOMethod.Buffered | (0 << 14),
         FsctlMoveFile = (IOFileDevice.FileSystem << 16) | (29 << 2) | IOMethod.Buffered | (0 << 14),
         FsctlIsVolumeDirty = (IOFileDevice.FileSystem << 16) | (30 << 2) | IOMethod.Buffered | (0 << 14),
         FsctlGetHfsInformation = (IOFileDevice.FileSystem << 16) | (31 << 2) | IOMethod.Buffered | (0 << 14),

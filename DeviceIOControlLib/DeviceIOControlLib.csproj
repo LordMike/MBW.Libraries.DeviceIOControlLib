@@ -36,6 +36,7 @@
   <ItemGroup>
     <Compile Include="DeviceIOControlWrapper.cs" />
     <Compile Include="DeviceIODisk.cs" />
+    <Compile Include="DeviceIOFileSystem.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="IOControlCode.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -1,4 +1,6 @@
 using System;
+using System.Linq;
+using System.Collections;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using Microsoft.Win32.SafeHandles;
@@ -7,7 +9,7 @@ namespace DeviceIOControlLib
 {
     public class DeviceIOControlWrapper
     {
-        [DllImport("Kernel32.dll", SetLastError = false, CharSet = CharSet.Auto)]
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         private static extern bool DeviceIoControl(
             SafeFileHandle hDevice,
             IOControlCode IoControlCode,
@@ -221,72 +223,126 @@ namespace DeviceIOControlLib
 
         #region FILESYSTEM
 
+        //FsctlAllowExtendedDasdIo
+        //FsctlCreateOrGetObjectId
+        //FsctlCreateUsnJournal
+        //FsctlDeleteObjectId
+        //FsctlDeleteReparsePoint
+        //FsctlDeleteUsnJournal
+        //FsctlDismountVolume
+        //FsctlDumpPropertyData
+        //FsctlEnableUpgrade
+        //FsctlEncryptionFsctlIo
+        //FsctlEnumUsnData
+        //FsctlExtendVolume
+        //FsctlFileSystemGetStatistics
+        //FsctlFindFilesBySid
+        //FsctlGetCompression
+        //FsctlGetHfsInformation
+        //FsctlGetNtfsFileRecord
+        //FsctlGetNtfsVolumeData
+        //FsctlGetObjectId
+        //FsctlGetReparsePoint
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/dd405526(v=vs.85).aspx"/></summary>
+        public RETRIEVAL_POINTER_BASE FileSystemGetRetrievalPointerBase()
+        {
+            return InvokeIoControl<RETRIEVAL_POINTER_BASE>(Handle, IOControlCode.FsctlGetRetrievalPointerBase);
+        }
+
+        //FsctlGetRetrievalPointer
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364573(v=vs.85).aspx"/></summary>
+        public VOLUME_BITMAP_BUFFER FileSystemGetVolumeBitmap(ulong startingLcn)
+        {
+            STARTING_LCN_INPUT_BUFFER startingLcnStruct = new STARTING_LCN_INPUT_BUFFER();
+            startingLcnStruct.StartingLcn = startingLcn;
+
+            // Fetch 128 bytes (this includes the size parameter of the VOLUME_BITMAP_BUFFER structure.
+            int lastError;
+            byte[] data = InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, 128, startingLcnStruct, out lastError);
+
+            // Is there more data? (Most often there is).
+            if (lastError == 234)
+            {
+                // Parse length attribute (2'nd 64-bit attribute)
+                uint newLength = (uint)BitConverter.ToUInt64(data, 8);
+
+                // Length: Clusters / 8 + 2x 64 bit numbers
+                newLength = (uint)Math.Ceiling(newLength / 8d) + 2 * 8;
+
+                data = InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, newLength, startingLcnStruct, out lastError);
+            }
+
+            // Ensure the last call to InvokeIoControl succeeded.
+            if (lastError != 0)
+                throw new Win32Exception("Couldn't invoke FileSystemGetVolumeBitmap. LastError: " + Utils.GetWin32ErrorMessage(lastError));
+
+            // Build the VOLUME_BITMAP_BUFFER structure.
+            VOLUME_BITMAP_BUFFER res = new VOLUME_BITMAP_BUFFER();
+
+            res.StartingLcn = BitConverter.ToUInt64(data, 0);
+            res.BitmapSize = BitConverter.ToUInt64(data, sizeof(UInt64));
+
+            res.Buffer = new BitArray((int)res.BitmapSize);
+
+            for (int i = 0; i < res.Buffer.Length; i++)
+            {
+                int dataByteIndex = sizeof(UInt64) * 2 + i / 8;
+                byte dataByte = data[dataByteIndex];
+
+                int byteIdx = 7 - (i % 8);
+
+                res.Buffer[i] = ((dataByte >> byteIdx) & 1) == 1;
+            }
+
+            return res;
+        }
+
+        //FsctlHsmData
+        //FsctlHsmMsg
+        //FsctlInvalidateVolumes
+        //FsctlIsPathnameValid
+        //FsctlIsVolumeDirty
+        //FsctlIsVolumeMounted
+        //FsctlLockVolume
+        //FsctlMarkAsSystemHive
+        //FsctlMarkHandle
+        //FsctlMarkVolumeDirty
+        //FsctlMoveFile
+        //FsctlNssControl
+        //FsctlNssRcontrol
+        //FsctlOpBatchAckClosePending
+        //FsctlOplockBreakAckNo2
+        //FsctlOplockBreakAcknowledge
+        //FsctlOplockBreakNotify
+        //FsctlQueryAllocatedRanges
+        //FsctlQueryFatBpb
+        //FsctlQueryRetrievalPointers
+        //FsctlQueryUsnJournal
+        //FsctlReadFileUsnData
+        //FsctlReadPropertyData
+        //FsctlReadRawEncrypted
+        //FsctlReadUsnJournal
+        //FsctlRecallFile
+        //FsctlRequestBatchOplock
+        //FsctlRequestFilterOplock
         //FsctlRequestOplockLevel1
         //FsctlRequestOplockLevel2
-        //FsctlRequestBatchOplock
-        //FsctlOplockBreakAcknowledge
-        //FsctlOpBatchAckClosePending
-        //FsctlOplockBreakNotify
-        //FsctlLockVolume
-        //FsctlUnlockVolume
-        //FsctlDismountVolume
-        //FsctlIsVolumeMounted
-        //FsctlIsPathnameValid
-        //FsctlMarkVolumeDirty
-        //FsctlQueryRetrievalPointers
-        //FsctlGetCompression
-        //FsctlSetCompression
-        //FsctlMarkAsSystemHive
-        //FsctlOplockBreakAckNo2
-        //FsctlInvalidateVolumes
-        //FsctlQueryFatBpb
-        //FsctlRequestFilterOplock
-        //FsctlFileSystemGetStatistics
-        //FsctlGetNtfsVolumeData
-        //FsctlGetNtfsFileRecord
-        //FsctlGetVolumeBitmap
-        //FsctlGetRetrievalPointers
-        //FsctlMoveFile
-        //FsctlIsVolumeDirty
-        //FsctlGetHfsInformation
-        //FsctlAllowExtendedDasdIo
-        //FsctlReadPropertyData
-        //FsctlWritePropertyData
-        //FsctlFindFilesBySid
-        //FsctlDumpPropertyData
-        //FsctlSetObjectId
-        //FsctlGetObjectId
-        //FsctlDeleteObjectId
-        //FsctlSetReparsePoint
-        //FsctlGetReparsePoint
-        //FsctlDeleteReparsePoint
-        //FsctlEnumUsnData
         //FsctlSecurityIdCheck
-        //FsctlReadUsnJournal
+        //FsctlSetCompression
+        //FsctlSetEncryption
+        //FsctlSetObjectId
         //FsctlSetObjectIdExtended
-        //FsctlCreateOrGetObjectId
+        //FsctlSetReparsePoint
         //FsctlSetSparse
         //FsctlSetZeroData
-        //FsctlQueryAllocatedRanges
-        //FsctlEnableUpgrade
-        //FsctlSetEncryption
-        //FsctlEncryptionFsctlIo
-        //FsctlWriteRawEncrypted
-        //FsctlReadRawEncrypted
-        //FsctlCreateUsnJournal
-        //FsctlReadFileUsnData
-        //FsctlWriteUsnCloseRecord
-        //FsctlExtendVolume
-        //FsctlQueryUsnJournal
-        //FsctlDeleteUsnJournal
-        //FsctlMarkHandle
         //FsctlSisCopyFile
         //FsctlSisLinkFiles
-        //FsctlHsmMsg
-        //FsctlNssControl
-        //FsctlHsmData
-        //FsctlRecallFile
-        //FsctlNssRcontrol
+        //FsctlUnlockVolume
+        //FsctlWritePropertyData
+        //FsctlWriteRawEncrypted
+        //FsctlWriteUsnCloseRecord
 
         #endregion
 
@@ -306,9 +362,7 @@ namespace DeviceIOControlLib
         {
             uint returnedBytes = 0;
 
-            bool success = DeviceIoControl(handle, controlCode, null, 0, null, 0, ref returnedBytes, IntPtr.Zero);
-
-            return success;
+            return DeviceIoControl(handle, controlCode, null, 0, null, 0, ref returnedBytes, IntPtr.Zero);
         }
 
         /// <summary>
@@ -348,6 +402,86 @@ namespace DeviceIOControlLib
             }
 
             return (T)output;
+        }
+
+        /// <summary>
+        /// Invoke DeviceIOControl with input of type V, and retrieve the output in the form of an object of type T.
+        /// </summary>
+        private static T InvokeIoControl<T, V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+        {
+            uint returnedBytes = 0;
+
+            object output = default(T);
+            uint outputSize = (uint)Marshal.SizeOf(output);
+
+            uint inputSize = (uint)Marshal.SizeOf(input);
+            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputSize, ref returnedBytes, IntPtr.Zero);
+
+            if (!success)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+            }
+
+            return (T)output;
+        }
+
+        /// <summary>
+        /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
+        /// </summary>
+        private static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+        {
+            uint returnedBytes = 0;
+
+            uint inputSize = (uint)Marshal.SizeOf(input);
+            uint outputLength = 128;
+
+            do
+            {
+                byte[] output = new byte[outputLength];
+                bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
+
+                if (!success)
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+
+                    if (lastError == 234)
+                    {
+                        // More data
+                        outputLength += 1000000;
+                        continue;
+                    }
+
+                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                }
+
+                // Return the result
+                byte[] res = new byte[returnedBytes];
+                Array.Copy(output, res, returnedBytes);
+
+                return res;
+            } while (true);
+        }
+
+        /// <summary>
+        /// Calls InvokeIoControl with the specified input, returning a byte array. It allows the caller to handle errors.
+        /// </summary>
+        private static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
+        {
+            uint returnedBytes = 0;
+            uint inputSize = (uint)Marshal.SizeOf(input);
+
+            errorCode = 0;
+            byte[] output = new byte[outputLength];
+
+            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
+
+            if (!success)
+            {
+                errorCode = Marshal.GetLastWin32Error();
+            }
+
+            return output;
         }
     }
 }
