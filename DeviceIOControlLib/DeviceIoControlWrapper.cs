@@ -304,7 +304,13 @@ namespace DeviceIOControlLib
         //FsctlGetCompression
         //FsctlGetHfsInformation
         //FsctlGetNtfsFileRecord
-        //FsctlGetNtfsVolumeData
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364569(v=vs.85).aspx"/></summary>
+        public NTFS_VOLUME_DATA_BUFFER FileSystemGetNtfsVolumeData()
+        {
+            return InvokeIoControl<NTFS_VOLUME_DATA_BUFFER>(Handle, IOControlCode.FsctlGetNtfsVolumeData);
+        }
+
         //FsctlGetObjectId
         //FsctlGetReparsePoint
 
