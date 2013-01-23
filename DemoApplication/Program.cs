@@ -2,10 +2,12 @@
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Drawing;
+using System.Drawing.Imaging;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
 
-namespace TestApplication
+namespace DemoApplication
 {
     class Program
     {
@@ -29,6 +31,9 @@ namespace TestApplication
 
             // Open and close CD Rom tray
             ExampleCdRomIO();
+
+            // Draw a bitmap image of the disk allocation bitmap
+            ExampleBitmap();
 
             Console.WriteLine("Done.");
             Console.ReadLine();
@@ -154,6 +159,58 @@ namespace TestApplication
             Console.WriteLine("Closing {0}", drive);
             cdTrayDeviceIo.StorageLoadMedia();
             Console.WriteLine("Closed {0}", drive);
+
+            Console.WriteLine();
+        }
+
+        private static void ExampleBitmap()
+        {
+            const string drive = @"\\.\C:";
+
+            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (volumeHandle.IsInvalid)
+            {
+                Console.WriteLine(@"!! Invalid {0}", drive);
+                Console.WriteLine();
+                return;
+            }
+
+            DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
+
+            // Bitmap
+            VOLUME_BITMAP_BUFFER bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
+
+            Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
+
+            int width = 10000;
+            int height = (int)Math.Ceiling(bitmap.BitmapSize / (double)width);
+
+            Console.WriteLine("W/H: {0:N0} / {1:N0}", width, height);
+
+            using (Bitmap bmp = new Bitmap(width, height))
+            {
+                using (Graphics g = Graphics.FromImage(bmp))
+                    g.Clear(Color.Green);
+
+                for (int i = 0; i < bitmap.Buffer.Length; i++)
+                {
+                    int x = i % width;
+                    int y = i / width;
+
+                    if (bitmap.Buffer[i])
+                        bmp.SetPixel(x, y, Color.Black);
+                    else
+                        bmp.SetPixel(x, y, Color.White);
+
+                    if (y % 100 == 0 && x == 0)
+                        Console.WriteLine("{0:N0} / {1:N0}", y, height);
+                }
+
+                bmp.Save("test.png", ImageFormat.Png);
+            }
 
             Console.WriteLine();
         }
