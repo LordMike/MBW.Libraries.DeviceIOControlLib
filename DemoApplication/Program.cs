@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -6,6 +7,8 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
+using FileAttributes = System.IO.FileAttributes;
+using System.Linq;
 
 namespace DemoApplication
 {
@@ -83,6 +86,12 @@ namespace DemoApplication
             }
 
             DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
+
+            IUSN_RECORD[] usnData = volumeDeviceIo.FileSystemEnumUsnData();
+            Console.WriteLine("Found {0:N0} file/folder records", usnData.Length);
+
+            int usnDicNameUniques = new HashSet<string>(usnData.Select(s => s.FileName)).Count;
+            Console.WriteLine("Found {0:N0} unique names on records", usnDicNameUniques);
 
             // FS Stats
             FileSystemStats[] fsStats = volumeDeviceIo.FileSystemGetStatistics();
