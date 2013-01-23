@@ -161,6 +161,8 @@ namespace DeviceIOControlLib
         // VIDEO
         VideoQuerySupportedBrightness = (IOFileDevice.Video << 16) | (0x0125 << 2) | IOMethod.Buffered | (0 << 14),
         VideoQueryDisplayBrightness = (IOFileDevice.Video << 16) | (0x0126 << 2) | IOMethod.Buffered | (0 << 14),
-        VideoSetDisplayBrightness = (IOFileDevice.Video << 16) | (0x0127 << 2) | IOMethod.Buffered | (0 << 14)
+        VideoSetDisplayBrightness = (IOFileDevice.Video << 16) | (0x0127 << 2) | IOMethod.Buffered | (0 << 14),
+        // Volume (Disk Volumes)
+        VolumeGetVolumeDiskExtents = (IOFileDevice.Volume << 16) | (0 << 2) | IOMethod.Buffered | (0 << 14)
     }
 }

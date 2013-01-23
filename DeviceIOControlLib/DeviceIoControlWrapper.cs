@@ -424,6 +424,48 @@ namespace DeviceIOControlLib
 
         #endregion
 
+        #region VOLUME
+
+        /// <summary>
+        /// <see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365194(v=vs.85).aspx" />
+        /// </summary>
+        public VOLUME_DISK_EXTENTS VolumeGetVolumeDiskExtents()
+        {
+            // Fetch in increments of 32 bytes, as one extent (the most common case) is one extent pr. volume.
+            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.VolumeGetVolumeDiskExtents, 32);
+
+            // Build the VOLUME_DISK_EXTENTS structure
+            VOLUME_DISK_EXTENTS res = new VOLUME_DISK_EXTENTS();
+
+            res.NumberOfDiskExtents = BitConverter.ToUInt32(data, 0);
+            res.Extents = new DISK_EXTENT[res.NumberOfDiskExtents];
+
+            IntPtr dataPtr = IntPtr.Zero;
+            try
+            {
+                dataPtr = Marshal.AllocHGlobal(data.Length);
+                Marshal.Copy(data, 0, dataPtr, data.Length);
+
+                // TODO: This code needs to be tested for disks with more than one extent.
+                for (int i = 0; i < res.NumberOfDiskExtents; i++)
+                {
+                    IntPtr currentDataPtr = dataPtr + 8 + i * Marshal.SizeOf(typeof(DISK_EXTENT));
+                    DISK_EXTENT extent = (DISK_EXTENT)Marshal.PtrToStructure(currentDataPtr, typeof(DISK_EXTENT));
+
+                    res.Extents[i] = extent;
+                }
+            }
+            finally
+            {
+                if (dataPtr != IntPtr.Zero)
+                    Marshal.FreeHGlobal(dataPtr);
+            }
+
+            return res;
+        }
+
+        #endregion
+
         /// <summary>
         /// Invoke DeviceIOControl with no input or output.
         /// </summary>
@@ -450,6 +492,24 @@ namespace DeviceIOControlLib
                 int lastError = Marshal.GetLastWin32Error();
                 throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
+
+            return output;
+        }
+
+        /// <summary>
+        /// Invoke DeviceIOControl with no input, and retrieve the output in the form of a byte array. Lets the caller handle the errorcode (if any).
+        /// </summary>
+        private static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, out int errorCode)
+        {
+            uint returnedBytes = 0;
+
+            byte[] output = new byte[outputLength];
+            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
+
+            errorCode = 0;
+
+            if (!success)
+                errorCode = Marshal.GetLastWin32Error();
 
             return output;
         }

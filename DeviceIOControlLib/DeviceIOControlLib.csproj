@@ -34,6 +34,7 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DeviceIOVolume.cs" />
     <Compile Include="DeviceIOControlWrapper.cs" />
     <Compile Include="DeviceIODisk.cs" />
     <Compile Include="DeviceIOFileSystem.cs" />
