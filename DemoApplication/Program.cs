@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
 using FileAttributes = System.IO.FileAttributes;
-using System.Linq;
 
 namespace DemoApplication
 {
@@ -87,11 +87,41 @@ namespace DemoApplication
 
             DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
 
+            // Extract a complete file list from the target drive
             IUSN_RECORD[] usnData = volumeDeviceIo.FileSystemEnumUsnData();
             Console.WriteLine("Found {0:N0} file/folder records", usnData.Length);
 
-            int usnDicNameUniques = new HashSet<string>(usnData.Select(s => s.FileName)).Count;
-            Console.WriteLine("Found {0:N0} unique names on records", usnDicNameUniques);
+            // Count the unique file names
+            int usnNameUniques = new HashSet<string>(usnData.Select(s => s.FileName)).Count;
+            Console.WriteLine("Found {0:N0} unique names on records", usnNameUniques);
+
+            // Prepare a dictionary to resolve parents
+            Dictionary<ulong, USN_RECORD_V2> usnDic = usnData.OfType<USN_RECORD_V2>().ToDictionary(s => s.FileReferenceNumber);
+
+            const string root = drive + "\\";
+
+            List<string> files = new List<string>();
+            List<string> parents = new List<string>();
+
+            foreach (USN_RECORD_V2 usnRecord in usnData.OfType<USN_RECORD_V2>())
+            {
+                parents.Clear();
+
+                USN_RECORD_V2 current = usnRecord;
+                while (usnDic.ContainsKey(current.ParentFileReferenceNumber))
+                {
+                    current = usnDic[current.ParentFileReferenceNumber];
+                    parents.Add(current.FileName);
+                }
+
+                parents.Reverse();
+
+                string path = Path.Combine(root, Path.Combine(parents.ToArray()), usnRecord.FileName);
+                files.Add(path);
+            }
+
+            // Sort all files in lexicographical order
+            files.Sort();
 
             // FS Stats
             FileSystemStats[] fsStats = volumeDeviceIo.FileSystemGetStatistics();
