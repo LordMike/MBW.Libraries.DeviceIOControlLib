@@ -389,6 +389,7 @@ namespace DeviceIOControlLib
         //FsctlQueryAllocatedRanges
         //FsctlQueryFatBpb
         //FsctlQueryRetrievalPointers
+        //FsctlQueryOnDiskVolumeInfo
         //FsctlQueryUsnJournal
         //FsctlReadFileUsnData
         //FsctlReadPropertyData

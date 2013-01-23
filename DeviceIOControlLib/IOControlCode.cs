@@ -158,6 +158,7 @@ namespace DeviceIOControlLib
         FsctlHsmData = (IOFileDevice.FileSystem << 16) | (68 << 2) | IOMethod.Neither | (FileAccess.ReadWrite << 14),
         FsctlRecallFile = (IOFileDevice.FileSystem << 16) | (69 << 2) | IOMethod.Neither | (0 << 14),
         FsctlNssRcontrol = (IOFileDevice.FileSystem << 16) | (70 << 2) | IOMethod.Buffered | (FileAccess.Read << 14),
+        FsctlQueryOnDiskVolumeInfo = (IOFileDevice.FileSystem << 16) | (79 << 2) | IOMethod.Buffered | (0 << 14),
         // VIDEO
         VideoQuerySupportedBrightness = (IOFileDevice.Video << 16) | (0x0125 << 2) | IOMethod.Buffered | (0 << 14),
         VideoQueryDisplayBrightness = (IOFileDevice.Video << 16) | (0x0126 << 2) | IOMethod.Buffered | (0 << 14),
