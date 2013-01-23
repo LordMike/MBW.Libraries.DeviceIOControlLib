@@ -1,9 +1,9 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
-using System.Drawing;
-using System.Drawing.Imaging;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
 
@@ -21,7 +21,7 @@ namespace DemoApplication
            [MarshalAs(UnmanagedType.U4)] FileAttributes dwFlagsAndAttributes,
            IntPtr hTemplateFile);
 
-        static void Main()
+        private static void Main()
         {
             // Read disk sector size
             ExampleDiskIO();
