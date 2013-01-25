@@ -175,7 +175,48 @@ namespace DeviceIOControlLib
         }
 
         //DiskSmartSendDriveCommand
-        //DiskSmartRcvDriveData
+
+        /// <summary><see cref=""/></summary>
+        public void DiskGetSmartData()
+        {
+            const int bufferSize = 512;
+
+            SENDCMDINPARAMS inParams = new SENDCMDINPARAMS();
+            inParams.cBufferSize = bufferSize;
+
+            // CMD Type
+            //#define READ_ATTRIBUTES         0xD0
+            //#define READ_THRESHOLDS         0xD1
+            //#define ENABLE_DISABLE_AUTOSAVE 0xD2
+            //#define SAVE_ATTRIBUTE_VALUES   0xD3
+            //#define EXECUTE_OFFLINE_DIAGS   0xD4
+            //#define SMART_READ_LOG          0xD5
+            //#define SMART_WRITE_LOG         0xd6
+            //#define ENABLE_SMART            0xD8
+            //#define DISABLE_SMART           0xD9
+            //#define RETURN_SMART_STATUS     0xDA
+            //#define ENABLE_DISABLE_AUTO_OFFLINE 0xDB
+
+            inParams.irDriveRegs.bFeaturesReg = 0xD0;
+            inParams.irDriveRegs.bSectorCountReg = 1;
+            inParams.irDriveRegs.bSectorNumberReg = 1;
+            inParams.irDriveRegs.bCylLowReg = 0x4F;     // SMART_CYL_LOW
+            inParams.irDriveRegs.bCylHighReg = 0xC2;    // SMART_CYL_HI
+            inParams.irDriveRegs.bDriveHeadReg = 0xA0 | ((0 & 1) << 4);
+            inParams.irDriveRegs.bCommandReg = 0xB0;    // SMART_CMD
+
+            inParams.bDriveNumber = 0;
+
+            SENDCMDOUTPARAMS outParams = new SENDCMDOUTPARAMS();
+            outParams.cBufferSize = bufferSize;
+
+            int errorCode;
+            byte[] data = InvokeIoControl(Handle, IOControlCode.DiskSmartRcvDriveData, (uint) (Marshal.SizeOf(typeof(SENDCMDOUTPARAMS)) - 1 + bufferSize), out errorCode);
+
+
+            return;
+        }
+
         //DiskUpdateDriveSize
         //DiskGrowPartition
 

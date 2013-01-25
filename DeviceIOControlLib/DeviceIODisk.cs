@@ -246,4 +246,51 @@ namespace DeviceIOControlLib
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
         public ulong[] dwReserved;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SENDCMDINPARAMS
+    {
+        public ulong cBufferSize;
+        public IDEREGS irDriveRegs;
+        public byte bDriveNumber;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 3)]
+        public byte[] bReserved;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
+        public ulong[] dwReserved;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+        public byte[] bBuffer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct IDEREGS
+    {
+        public byte bFeaturesReg;
+        public byte bSectorCountReg;
+        public byte bSectorNumberReg;
+        public byte bCylLowReg;
+        public byte bCylHighReg;
+        public byte bDriveHeadReg;
+        public byte bCommandReg;
+        public byte bReserved;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SENDCMDOUTPARAMS
+    {
+        public ulong cBufferSize;
+        public DRIVERSTATUS DriverStatus;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 1)]
+        public byte[] bBuffer;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct DRIVERSTATUS
+    {
+        public byte bDriverError;
+        public byte bIDEError;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
+        public byte[] bReserved;
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 2)]
+        public ulong[] dwReserved;
+    }
 }
