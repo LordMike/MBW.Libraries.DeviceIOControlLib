@@ -167,7 +167,13 @@ namespace DeviceIOControlLib
         //DiskRequestStructure
         //DiskRequestData
         //DiskControllerNumber
-        //DiskSmartGetVersion
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/hardware/ff566202(v=vs.85).aspx"/></summary>
+        public GETVERSIONINPARAMS DiskGetSmartVersion()
+        {
+            return InvokeIoControl<GETVERSIONINPARAMS>(Handle, IOControlCode.DiskSmartGetVersion);
+        }
+
         //DiskSmartSendDriveCommand
         //DiskSmartRcvDriveData
         //DiskUpdateDriveSize
