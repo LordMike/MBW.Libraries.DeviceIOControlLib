@@ -535,4 +535,52 @@ namespace DeviceIOControlLib
         public uint FileRecordLength;
         public byte[] FileRecordBuffer;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct STARTING_VCN_INPUT_BUFFER
+    {
+        public ulong StartingVcn;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RETRIEVAL_POINTERS_BUFFER
+    {
+        public ulong ExtentCount;
+        public ulong StartingVcn;
+        public RETRIEVAL_POINTERS_EXTENT[] Extents;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct RETRIEVAL_POINTERS_EXTENT
+    {
+        public ulong NextVcn;
+        public ulong Lcn;
+    }
+
+    public class FileExtentInfo
+    {
+        /// <summary>
+        /// Position in file
+        /// </summary>
+        public ulong Vcn { get; set; }
+
+        /// <summary>
+        /// Position on disk
+        /// </summary>
+        public ulong Lcn { get; set; }
+
+        /// <summary>
+        /// Size in # of clusters
+        /// </summary>
+        public ulong Size { get; set; }
+    }
+    
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MOVE_FILE_DATA
+    {
+        public IntPtr FileHandle;
+        public ulong StartingVcn;
+        public ulong StartingLcn;
+        public uint ClusterCount;
+    }
 }

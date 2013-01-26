@@ -435,10 +435,69 @@ namespace DeviceIOControlLib
             return InvokeIoControl<RETRIEVAL_POINTER_BASE>(Handle, IOControlCode.FsctlGetRetrievalPointerBase);
         }
 
-        //FsctlGetRetrievalPointer
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/dd405526(v=vs.85).aspx"/></summary>
+        /// <remarks>
+        ///     Does not correcly handle all cases of this method!. Especially regarding compressed/encrypted and/or sparse files in NTFS.
+        ///     Consider yourself warned.
+        /// </remarks>
+        public FileExtentInfo[] FileSystemGetRetrievalPointers(ulong startingVcn = 0)
+        {
+            STARTING_VCN_INPUT_BUFFER input = new STARTING_VCN_INPUT_BUFFER();
+            input.StartingVcn = startingVcn;
+
+            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlGetRetrievalPointers, input, 1024);
+
+            RETRIEVAL_POINTERS_BUFFER res = new RETRIEVAL_POINTERS_BUFFER();
+            res.ExtentCount = BitConverter.ToUInt32(data, 0);
+            res.StartingVcn = BitConverter.ToUInt64(data, sizeof(ulong));
+
+            res.Extents = new RETRIEVAL_POINTERS_EXTENT[res.ExtentCount];
+
+            IntPtr dataPtr = IntPtr.Zero;
+
+            try
+            {
+                uint singleSize = (uint)Marshal.SizeOf(typeof(RETRIEVAL_POINTERS_EXTENT));
+                int extentsSize = (int)(res.ExtentCount * singleSize);
+                dataPtr = Marshal.AllocHGlobal(extentsSize);
+
+                Marshal.Copy(data, sizeof(ulong) + sizeof(ulong), dataPtr, extentsSize);
+
+                for (ulong i = 0; i < res.ExtentCount; i++)
+                {
+                    IntPtr currentPtr = dataPtr + (int)(singleSize * i);
+                    res.Extents[i] = (RETRIEVAL_POINTERS_EXTENT)Marshal.PtrToStructure(currentPtr, typeof(RETRIEVAL_POINTERS_EXTENT));
+                }
+            }
+            finally
+            {
+                if (dataPtr != IntPtr.Zero)
+                    Marshal.FreeHGlobal(dataPtr);
+            }
+
+            FileExtentInfo[] extents = new FileExtentInfo[res.ExtentCount];
+
+            for (ulong i = 0; i < res.ExtentCount; i++)
+            {
+                ulong startVcn = i == 0
+                                 ? res.StartingVcn
+                                 : res.Extents[i - 1].NextVcn;
+
+                ulong size = res.Extents[i].NextVcn - startVcn;
+
+                FileExtentInfo extent = new FileExtentInfo();
+                extent.Size = size;
+                extent.Vcn = startVcn;
+                extent.Lcn = res.Extents[i].Lcn;
+
+                extents[i] = extent;
+            }
+
+            return extents;
+        }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364573(v=vs.85).aspx"/></summary>
-        public VOLUME_BITMAP_BUFFER FileSystemGetVolumeBitmap(ulong startingLcn)
+        public VOLUME_BITMAP_BUFFER FileSystemGetVolumeBitmap(ulong startingLcn = 0)
         {
             STARTING_LCN_INPUT_BUFFER startingLcnStruct = new STARTING_LCN_INPUT_BUFFER();
             startingLcnStruct.StartingLcn = startingLcn;
@@ -494,7 +553,19 @@ namespace DeviceIOControlLib
         //FsctlMarkAsSystemHive
         //FsctlMarkHandle
         //FsctlMarkVolumeDirty
-        //FsctlMoveFile
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/aa364577(v=vs.85).aspx"/></summary>
+        public void FileSystemMoveFile(IntPtr fileHandle, ulong startingVcn, ulong startingLcn, uint clusterCount)
+        {
+            MOVE_FILE_DATA input = new MOVE_FILE_DATA();
+            input.FileHandle = fileHandle;
+            input.StartingVcn = startingVcn;
+            input.StartingLcn = startingLcn;
+            input.ClusterCount = clusterCount;
+
+            InvokeIoControl(Handle, IOControlCode.FsctlMoveFile, input);
+        }
+
         //FsctlNssControl
         //FsctlNssRcontrol
         //FsctlOpBatchAckClosePending
@@ -670,6 +741,23 @@ namespace DeviceIOControlLib
             }
 
             return (T)output;
+        }
+
+        /// <summary>
+        /// Invoke DeviceIOControl with input of type V, and retrieves no output.
+        /// </summary>
+        private static void InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+        {
+            uint returnedBytes = 0;
+
+            uint inputSize = (uint)Marshal.SizeOf(input);
+            bool success = DeviceIoControl(handle, controlCode, input, inputSize, null, 0, ref returnedBytes, IntPtr.Zero);
+
+            if (!success)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+            }
         }
 
         /// <summary>
