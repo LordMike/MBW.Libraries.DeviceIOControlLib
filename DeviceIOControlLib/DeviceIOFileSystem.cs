@@ -521,4 +521,18 @@ namespace DeviceIOControlLib
         /// </summary>
         USN_REASON_STREAM_CHANGE = 0x00200000
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NTFS_FILE_RECORD_INPUT_BUFFER
+    {
+        public ulong FileReferenceNumber;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct NTFS_FILE_RECORD_OUTPUT_BUFFER
+    {
+        public ulong FileReferenceNumber;
+        public uint FileRecordLength;
+        public byte[] FileRecordBuffer;
+    }
 }

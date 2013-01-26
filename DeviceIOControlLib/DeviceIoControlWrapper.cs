@@ -401,7 +401,24 @@ namespace DeviceIOControlLib
         //FsctlFindFilesBySid
         //FsctlGetCompression
         //FsctlGetHfsInformation
-        //FsctlGetNtfsFileRecord
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/aa364568(v=vs.85).aspx"/></summary>
+        public NTFS_FILE_RECORD_OUTPUT_BUFFER FileSystemGetNtfsFileRecord(ulong fileId)
+        {
+            NTFS_FILE_RECORD_INPUT_BUFFER input = new NTFS_FILE_RECORD_INPUT_BUFFER();
+            input.FileReferenceNumber = fileId;
+
+            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlGetNtfsFileRecord, input, 1024);    // NTFS File records are in 1K chunks
+
+            NTFS_FILE_RECORD_OUTPUT_BUFFER res = new NTFS_FILE_RECORD_OUTPUT_BUFFER();
+            res.FileReferenceNumber = BitConverter.ToUInt64(data, 0);
+            res.FileRecordLength = BitConverter.ToUInt32(data, 8);
+
+            res.FileRecordBuffer = new byte[res.FileRecordLength];
+            Array.Copy(data, 8 + 4, res.FileRecordBuffer, 0, res.FileRecordLength);
+
+            return res;
+        }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364569(v=vs.85).aspx"/></summary>
         public NTFS_VOLUME_DATA_BUFFER FileSystemGetNtfsVolumeData()
