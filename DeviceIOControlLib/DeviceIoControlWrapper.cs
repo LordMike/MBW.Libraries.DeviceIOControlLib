@@ -440,34 +440,67 @@ namespace DeviceIOControlLib
         ///     Does not correcly handle all cases of this method!. Especially regarding compressed/encrypted and/or sparse files in NTFS.
         ///     Consider yourself warned.
         /// </remarks>
-        public FileExtentInfo[] FileSystemGetRetrievalPointers(ulong startingVcn = 0)
+        public FileExtentInfo[] FileSystemGetRetrievalPointers()
         {
             STARTING_VCN_INPUT_BUFFER input = new STARTING_VCN_INPUT_BUFFER();
-            input.StartingVcn = startingVcn;
+            input.StartingVcn = 0;
 
-            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlGetRetrievalPointers, input, 1024);
+            List<FileExtentInfo> extents = new List<FileExtentInfo>();
 
-            RETRIEVAL_POINTERS_BUFFER res = new RETRIEVAL_POINTERS_BUFFER();
-            res.ExtentCount = BitConverter.ToUInt32(data, 0);
-            res.StartingVcn = BitConverter.ToUInt64(data, sizeof(ulong));
+            uint chunkSize = 1024;
+            uint singleExtentSize = (uint)Marshal.SizeOf(typeof(RETRIEVAL_POINTERS_EXTENT));
 
-            res.Extents = new RETRIEVAL_POINTERS_EXTENT[res.ExtentCount];
-
+            int lastError;
             IntPtr dataPtr = IntPtr.Zero;
 
             try
             {
-                uint singleSize = (uint)Marshal.SizeOf(typeof(RETRIEVAL_POINTERS_EXTENT));
-                int extentsSize = (int)(res.ExtentCount * singleSize);
-                dataPtr = Marshal.AllocHGlobal(extentsSize);
-
-                Marshal.Copy(data, sizeof(ulong) + sizeof(ulong), dataPtr, extentsSize);
-
-                for (ulong i = 0; i < res.ExtentCount; i++)
+                do
                 {
-                    IntPtr currentPtr = dataPtr + (int)(singleSize * i);
-                    res.Extents[i] = (RETRIEVAL_POINTERS_EXTENT)Marshal.PtrToStructure(currentPtr, typeof(RETRIEVAL_POINTERS_EXTENT));
-                }
+                    byte[] data = InvokeIoControl(Handle, IOControlCode.FsctlGetRetrievalPointers, chunkSize, input, out lastError);
+
+                    RETRIEVAL_POINTERS_BUFFER output = new RETRIEVAL_POINTERS_BUFFER();
+                    output.ExtentCount = BitConverter.ToUInt32(data, 0);
+                    output.StartingVcn = BitConverter.ToUInt64(data, sizeof(ulong));
+
+                    output.Extents = new RETRIEVAL_POINTERS_EXTENT[output.ExtentCount];
+
+                    // Parse extents
+                    int extentsSize = (int)(output.ExtentCount * singleExtentSize);
+                    dataPtr = Marshal.AllocHGlobal(extentsSize);
+
+                    Marshal.Copy(data, sizeof(ulong) + sizeof(ulong), dataPtr, extentsSize);
+
+                    for (ulong i = 0; i < output.ExtentCount; i++)
+                    {
+                        IntPtr currentPtr = dataPtr + (int)(singleExtentSize * i);
+                        output.Extents[i] = (RETRIEVAL_POINTERS_EXTENT)Marshal.PtrToStructure(currentPtr, typeof(RETRIEVAL_POINTERS_EXTENT));
+                    }
+
+                    // Make extents more readable
+                    for (ulong i = 0; i < output.ExtentCount; i++)
+                    {
+                        ulong startVcn = i == 0
+                                         ? output.StartingVcn
+                                         : output.Extents[i - 1].NextVcn;
+
+                        ulong size = output.Extents[i].NextVcn - startVcn;
+
+                        FileExtentInfo extent = new FileExtentInfo();
+                        extent.Size = size;
+                        extent.Vcn = startVcn;
+                        extent.Lcn = output.Extents[i].Lcn;
+
+                        extents.Add(extent);
+                    }
+
+                    if (lastError == 38)
+                        // End of file reached
+                        break;
+
+                    // Prep the start point for the next call
+                    input.StartingVcn = output.Extents[output.ExtentCount - 1].NextVcn;
+                } while (lastError == 234);
             }
             finally
             {
@@ -475,25 +508,7 @@ namespace DeviceIOControlLib
                     Marshal.FreeHGlobal(dataPtr);
             }
 
-            FileExtentInfo[] extents = new FileExtentInfo[res.ExtentCount];
-
-            for (ulong i = 0; i < res.ExtentCount; i++)
-            {
-                ulong startVcn = i == 0
-                                 ? res.StartingVcn
-                                 : res.Extents[i - 1].NextVcn;
-
-                ulong size = res.Extents[i].NextVcn - startVcn;
-
-                FileExtentInfo extent = new FileExtentInfo();
-                extent.Size = size;
-                extent.Vcn = startVcn;
-                extent.Lcn = res.Extents[i].Lcn;
-
-                extents[i] = extent;
-            }
-
-            return extents;
+            return extents.ToArray();
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364573(v=vs.85).aspx"/></summary>
@@ -535,7 +550,7 @@ namespace DeviceIOControlLib
                 int dataByteIndex = sizeof(UInt64) * 2 + i / 8;
                 byte dataByte = data[dataByteIndex];
 
-                int byteIdx = 7 - (i % 8);
+                int byteIdx = i % 8;
 
                 res.Buffer[i] = ((dataByte >> byteIdx) & 1) == 1;
             }
@@ -846,6 +861,9 @@ namespace DeviceIOControlLib
                 }
 
                 // Return the result
+                if (output.Length == outputLength)
+                    return output;
+
                 byte[] res = new byte[returnedBytes];
                 Array.Copy(output, res, returnedBytes);
 
