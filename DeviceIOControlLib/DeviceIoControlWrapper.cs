@@ -279,7 +279,7 @@ namespace DeviceIOControlLib
                     {
                         // Get record length
                         int length = BitConverter.ToInt32(data, dataOffset);
-                        ushort majorVersion = BitConverter.ToUInt16(data, dataOffset + sizeof (int));
+                        ushort majorVersion = BitConverter.ToUInt16(data, dataOffset + sizeof(int));
 
                         if (length <= 0)
                             // No more records
