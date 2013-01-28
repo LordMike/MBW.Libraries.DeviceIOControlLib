@@ -18,10 +18,13 @@ namespace DemoApplication
 {
     class Program
     {
+        const uint FILE_READ_ATTRIBUTES = (0x0080);
+        const uint FILE_WRITE_ATTRIBUTES = 0x0100;
+
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         public static extern SafeFileHandle CreateFile(
            string lpFileName,
-           [MarshalAs(UnmanagedType.U4)] FileAccess dwDesiredAccess,
+           [MarshalAs(UnmanagedType.U4)] uint dwDesiredAccess,
            [MarshalAs(UnmanagedType.U4)] FileShare dwShareMode,
            IntPtr lpSecurityAttributes,
            [MarshalAs(UnmanagedType.U4)] FileMode dwCreationDisposition,
@@ -56,7 +59,7 @@ namespace DemoApplication
             const string drive = @"\\.\PhysicalDrive0";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle hddHandle = CreateFile(drive, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                   FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (hddHandle.IsInvalid)
@@ -86,7 +89,7 @@ namespace DemoApplication
             const string drive = @"\\.\C:";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle volumeHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
@@ -189,7 +192,7 @@ namespace DemoApplication
             Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", file, drive);
 
             // Open file to defragment
-            SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle fileHandle = CreateFile(file, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (fileHandle.IsInvalid)
@@ -204,7 +207,7 @@ namespace DemoApplication
             DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
 
             // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle driveHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (driveHandle.IsInvalid)
@@ -297,7 +300,7 @@ namespace DemoApplication
             Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", dir, drive);
 
             // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle driveHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (driveHandle.IsInvalid)
@@ -324,7 +327,7 @@ namespace DemoApplication
                 Console.WriteLine("Beginning work on {0}", file);
 
                 // Open file to defragment
-                SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
+                SafeFileHandle fileHandle = CreateFile(file, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                          FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
                 if (fileHandle.IsInvalid)
@@ -443,7 +446,7 @@ namespace DemoApplication
             Console.WriteLine(@"## Exmaple on drive {0} ##", drive);
 
             // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle driveHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (driveHandle.IsInvalid)
@@ -491,8 +494,6 @@ namespace DemoApplication
             Parallel.ForEach(files, file =>
             {
                 FileExtentInfo[] extents;
-                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
-                                                       FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
                 {
                     if (fileHandle.IsInvalid)
                     {
@@ -513,6 +514,8 @@ namespace DemoApplication
                         Console.WriteLine(@"Could not get fragments {0}: {1}", file, ex.Message);
                         return;
                     }
+                SafeFileHandle fileHandle = CreateFile(file, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
+                                                       FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
                     int localFileCounter = Interlocked.Increment(ref fileCounter);
                     if (localFileCounter % 1000 == 0)
@@ -657,7 +660,7 @@ namespace DemoApplication
             const string drive = @"\\.\CdRom0";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle cdTrayHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle cdTrayHandle = CreateFile(drive, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (cdTrayHandle.IsInvalid)
@@ -692,7 +695,7 @@ namespace DemoApplication
             const string drive = @"\\.\C:";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+            SafeFileHandle volumeHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
