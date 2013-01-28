@@ -1,12 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
+using System.Threading.Tasks;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
 using FileAttributes = System.IO.FileAttributes;
@@ -28,20 +31,21 @@ namespace DemoApplication
         private static void Main()
         {
             // Read disk sector size
-            ExampleDiskIO();
+            //ExampleDiskIO();
 
-            // Read volume info
-            ExampleFileSystemIO();
+            //// Read volume info
+            //ExampleFileSystemIO();
 
             // Defragment files
-            //ExampleDefragmentFile();
+            DefragFreeSpace();
+            //ExampleDefragmentFile(@"E:\Mike\Virtual Machines\Debian\Debian.vmdk");
             //ExampleDefragmentDir();
 
-            // Open and close CD Rom tray
-            ExampleCdRomIO();
+            //// Open and close CD Rom tray
+            //ExampleCdRomIO();
 
-            // Draw a bitmap image of the disk allocation bitmap
-            ExampleBitmap();
+            //// Draw a bitmap image of the disk allocation bitmap
+            //ExampleBitmap();
 
             Console.WriteLine("Done.");
             Console.ReadLine();
@@ -178,9 +182,8 @@ namespace DemoApplication
             Console.WriteLine();
         }
 
-        private static void ExampleDefragmentFile()
+        private static void ExampleDefragmentFile(string file)
         {
-            const string file = @"C:\Windows\system32\cmd.exe";
             string drive = @"\\.\" + Directory.GetDirectoryRoot(file).Substring(0, 2);
 
             Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", file, drive);
@@ -399,10 +402,10 @@ namespace DemoApplication
                         driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
 
                         // Mark newly used areas as used
-                        ulong upperFreeLCN = foundFreeLCN + (ulong) clustersNeeded;
+                        ulong upperFreeLCN = foundFreeLCN + (ulong)clustersNeeded;
                         for (ulong i = foundFreeLCN; i < upperFreeLCN; i++)
                         {
-                            bitmap.Buffer[(int) i] = true;
+                            bitmap.Buffer[(int)i] = true;
                         }
 
                         // Mark newly freed areas as free
@@ -430,6 +433,222 @@ namespace DemoApplication
 
             Console.WriteLine("Done... ");
             Console.ReadLine();
+            Console.WriteLine();
+        }
+
+        private static void DefragFreeSpace()
+        {
+            const string drive = @"\\.\E:";
+
+            Console.WriteLine(@"## Exmaple on drive {0} ##", drive);
+
+            // Open volume to defragment on
+            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (driveHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            DeviceIOControlWrapper driveDeviceIo = new DeviceIOControlWrapper(driveHandle);
+
+            // Find all files
+            List<USN_RECORD_V2> usns = driveDeviceIo.FileSystemEnumUsnData().OfType<USN_RECORD_V2>().ToList();
+            Dictionary<ulong, USN_RECORD_V2> usnDic = usns.ToDictionary(s => s.FileReferenceNumber);
+            const string root = "E:\\";
+
+            List<string> files = new List<string>();
+            List<string> parents = new List<string>();
+
+            foreach (USN_RECORD_V2 usnRecord in usns)
+            {
+                if (usnRecord.FileAttributes.HasFlag(DeviceIOControlLib.FileAttributes.Directory))
+                    continue;
+
+                parents.Clear();
+
+                USN_RECORD_V2 current = usnRecord;
+                while (usnDic.ContainsKey(current.ParentFileReferenceNumber))
+                {
+                    current = usnDic[current.ParentFileReferenceNumber];
+                    parents.Add(current.FileName);
+                }
+
+                parents.Reverse();
+
+                string path = Path.Combine(root, Path.Combine(parents.ToArray()), usnRecord.FileName);
+                files.Add(path);
+            }
+
+            List<FileInfoes> extentInfos = new List<FileInfoes>();
+
+            int fileCounter = 0;
+            Parallel.ForEach(files, file =>
+            {
+                FileExtentInfo[] extents;
+                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
+                                                       FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                {
+                    if (fileHandle.IsInvalid)
+                    {
+                        int lastError = Marshal.GetLastWin32Error();
+
+                        Console.WriteLine(@"Could not open {0}: {1}", file, new Win32Exception(lastError).Message);
+                        return;
+                    }
+
+                    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+
+                    try
+                    {
+                        extents = fileDeviceIo.FileSystemGetRetrievalPointers();
+                    }
+                    catch (Win32Exception ex)
+                    {
+                        Console.WriteLine(@"Could not get fragments {0}: {1}", file, ex.Message);
+                        return;
+                    }
+
+                    int localFileCounter = Interlocked.Increment(ref fileCounter);
+                    if (localFileCounter % 1000 == 0)
+                        Console.WriteLine("Opened file {0:N0} of {1:N0}, fragments: {2:N0}", localFileCounter, files.Count, extents.Length);
+
+                    fileHandle.Close();
+                }
+
+                if (extents.Length > 0)
+                    lock (extentInfos)
+                        extentInfos.Add(new FileInfoes(file, extents));
+            });
+            //for (int index = 0; index < files.Count; index++)
+            //{
+            //    string file = files[index];
+            //    SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
+            //                                           FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            //    if (fileHandle.IsInvalid)
+            //    {
+            //        int lastError = Marshal.GetLastWin32Error();
+
+            //        Console.WriteLine(@"Could not open {0}: {1}", file, new Win32Exception(lastError).Message);
+            //        continue;
+            //    }
+
+            //    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+
+            //    FileExtentInfo[] extents;
+            //    try
+            //    {
+            //        extents = fileDeviceIo.FileSystemGetRetrievalPointers();
+            //    }
+            //    catch (Win32Exception ex)
+            //    {
+            //        Console.WriteLine(@"Could not get fragments {0}: {1}", file, ex.Message);
+            //        continue;
+            //    }
+
+            //    if (index % 1000 == 0)
+            //        Console.WriteLine("Opened file {0:N0} of {1:N0}, fragments: {2:N0}", index, files.Count, extents.Length);
+
+            //    fileHandle.Close();
+
+            //    if (extents.Length > 0)
+            //        extentInfos.Add(new FileInfoes(file, extents));
+            //}
+
+            // Sort extents, last ones first
+            extentInfos = extentInfos.OrderByDescending(s => s.FirstLCN).ToList();
+
+            // Get bitmap
+            VOLUME_BITMAP_BUFFER bitmap = driveDeviceIo.FileSystemGetVolumeBitmap();
+            Console.WriteLine("Got Bitmap with {0:N0} clusters starting at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
+
+            ulong diskPointer = 0;
+            bool somethingDone;
+            do
+            {
+                somethingDone = false;
+                // Find freespace
+                Tuple<ulong, ulong> freeSpace = FindFirstFreeSpace(bitmap, diskPointer);
+                diskPointer = freeSpace.Item1 + freeSpace.Item2;
+
+                // Find suitable partner
+                Console.WriteLine("Finding best fit for {0:N0} free clusters at {1:N0}", freeSpace.Item2, freeSpace.Item1);
+
+                int freeSpaceLeft = (int)freeSpace.Item2;
+                List<FileInfoes> filesToMove = new List<FileInfoes>();
+
+                do
+                {
+                    // Find best fit from the end of the drive
+                    FileInfoes x = extentInfos.Where(s => s.TotalSize <= freeSpaceLeft && s.FirstLCN > freeSpace.Item1 + freeSpace.Item2 && !filesToMove.Contains(s)).MaxItem(s => s.TotalSize);
+
+                    if (x == null)
+                        continue;
+
+                    freeSpaceLeft -= (int)x.TotalSize;
+                    filesToMove.Add(x);
+                } while (freeSpaceLeft > 0);
+
+                if (filesToMove.Count == 0)
+                    continue;
+
+                Console.WriteLine("Found {0:N0} items totalling {1:N0} clusters", filesToMove.Count, filesToMove.Sum(s => s.TotalSize));
+
+                ulong currentLcn = freeSpace.Item1;
+                foreach (FileInfoes fileInfoese in filesToMove)
+                {
+                    try
+                    {
+                        using (SafeFileHandle fileHandle = CreateFile(fileInfoese.FilePath, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                        {
+                            driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, currentLcn, fileInfoese.TotalSize);
+                        }
+                    }
+                    catch (Win32Exception ex)
+                    {
+                        Console.WriteLine(@"Could not place files: {0}", ex.Message);
+                        break;
+                    }
+
+                    // Update bitmap
+                    foreach (FileExtentInfo extent in fileInfoese.Extents)
+                    {
+                        // Mark each extent as freed
+                        for (ulong i = extent.Lcn; i < extent.Lcn + extent.Size; i++)
+                        {
+                            bitmap.Buffer[(int)i] = false;
+                        }
+                    }
+
+                    for (ulong i = currentLcn; i < currentLcn + fileInfoese.TotalSize; i++)
+                    {
+                        // Mark as used
+                        bitmap.Buffer[(int)i] = true;
+                    }
+
+                    // Update file extent
+                    fileInfoese.Extents = new FileExtentInfo[1];
+                    fileInfoese.Extents[0] = new FileExtentInfo
+                    {
+                        Lcn = currentLcn,
+                        Size = fileInfoese.TotalSize,
+                        Vcn = 0
+                    };
+                    fileInfoese.FirstLCN = currentLcn;
+
+                    // Update pointer for next file
+                    currentLcn += fileInfoese.TotalSize;
+                }
+
+                somethingDone = true;
+            } while (somethingDone);
+
             Console.WriteLine();
         }
 
@@ -520,6 +739,93 @@ namespace DemoApplication
             }
 
             Console.WriteLine();
+        }
+        private static List<Tuple<ulong, ulong>> FindFreeSpaces(VOLUME_BITMAP_BUFFER bitmap)
+        {
+            List<Tuple<ulong, ulong>> freeSpaces = new List<Tuple<ulong, ulong>>();
+
+            ulong lastFreeStart = 0;
+            for (ulong i = 1; i < bitmap.BitmapSize; i++)
+            {
+                if (bitmap.Buffer[(int)(i - 1)] && !bitmap.Buffer[(int)i])
+                {
+                    // Switching from used to free
+                    lastFreeStart = i;
+                }
+                else if (!bitmap.Buffer[(int)(i - 1)] && bitmap.Buffer[(int)i])
+                {
+                    // Switching from free to used
+                    freeSpaces.Add(new Tuple<ulong, ulong>(lastFreeStart, i - lastFreeStart));
+                }
+            }
+
+            return freeSpaces;
+        }
+
+        private static Tuple<ulong, ulong> FindFirstFreeSpace(VOLUME_BITMAP_BUFFER bitmap, ulong start)
+        {
+            start = start == 0 ? 1 : start;
+
+            ulong lastFreeStart = 0;
+            for (ulong i = start; i < bitmap.BitmapSize; i++)
+            {
+                if (bitmap.Buffer[(int)(i - 1)] && !bitmap.Buffer[(int)i])
+                {
+                    // Switching from used to free
+                    lastFreeStart = i;
+                }
+                else if (!bitmap.Buffer[(int)(i - 1)] && bitmap.Buffer[(int)i])
+                {
+                    // Switching from free to used
+                    return new Tuple<ulong, ulong>(lastFreeStart, i - lastFreeStart);
+                }
+            }
+
+            return null;
+        }
+    }
+
+    public class FileInfoes
+    {
+        public FileExtentInfo[] Extents { get; set; }
+        public ulong FirstLCN { get; set; }
+        public uint TotalSize { get; set; }
+        public string FilePath { get; set; }
+
+        public FileInfoes(string filePath, FileExtentInfo[] extents)
+        {
+            FilePath = filePath;
+
+            Extents = extents;
+            FirstLCN = extents.Any() ? extents.Min(s => s.Lcn) : 0;
+            TotalSize = extents.Any() ? (uint)extents.Sum(s => (uint)s.Size) : 0;
+        }
+    }
+
+    public static class EnumerableExtensions
+    {
+        public static T MaxItem<T, V>(this IEnumerable<T> items, Func<T, V> selector) where V : IComparable<V>
+        {
+            T max = default(T);
+
+            if (!items.Any())
+                return max;
+
+            // Find max item
+            max = items.First();
+            V maxVal = selector(max);
+
+            foreach (T item in items.Skip(1))
+            {
+                V currentVal = selector(item);
+                if (currentVal.CompareTo(maxVal) <= 0)       // currentVal <= maxVal
+                    continue;
+
+                maxVal = currentVal;
+                max = item;
+            }
+
+            return max;
         }
     }
 }
