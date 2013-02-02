@@ -41,10 +41,11 @@ namespace DemoApplication
             //ExampleFileSystemIO();
 
             // Defragment files
-            DefragLargeFiles();
+            //DefragLargeFiles();
             //DefragFreeSpace();
             //ExampleDefragmentFile(@"E:\Mike\Virtual Machines\Debian\Debian.vmdk");
             //ExampleDefragmentDir();
+            ExampleDefragmentAll();
 
             //// Open and close CD Rom tray
             //ExampleCdRomIO();
@@ -189,256 +190,107 @@ namespace DemoApplication
 
         private static void ExampleDefragmentFile(string file)
         {
-            string drive = @"\\.\" + Directory.GetDirectoryRoot(file).Substring(0, 2);
+            if (!File.Exists(file))
+            {
+                // Early exit
+                Console.WriteLine("No such file: " + file);
+                return;
+            }
+
+            char drive = Directory.GetDirectoryRoot(file)[0];
 
             Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", file, drive);
 
-            // Open file to defragment
-            SafeFileHandle fileHandle = CreateFile(file, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            DefragmentEnvironment env = new DefragmentEnvironment(drive);
 
-            if (fileHandle.IsInvalid)
+            DefragmentFile(env, env.FileNames[file]);
+        }
+
+        private static void ExampleDefragmentDir()
+        {
+            const string dir = @"E:\Mike\SVN";
+            const char drive = 'E';
+
+            Console.WriteLine(@"## Exmaple on drive {0} ##", drive);
+
+            DefragmentEnvironment env = new DefragmentEnvironment('E');
+
+            FileInfoes[] relevantFiles = env.FileNames.Where(s => s.Key.StartsWith(dir, StringComparison.InvariantCultureIgnoreCase)).Select(s => s.Value).ToArray();
+
+            Console.WriteLine("Beginning work on {0} files", relevantFiles.Length);
+
+            foreach (FileInfoes file in relevantFiles)
             {
-                int lastError = Marshal.GetLastWin32Error();
-
-                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
-                Console.WriteLine();
-                return;
+                DefragmentFile(env, file);
             }
 
-            DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+            Console.WriteLine();
+        }
 
-            // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+        private static void ExampleDefragmentAll()
+        {
+            const char drive = 'E';
 
-            if (driveHandle.IsInvalid)
+            Console.WriteLine(@"## Exmaple on drive {0} ##", drive);
+
+            DefragmentEnvironment env = new DefragmentEnvironment('E');
+
+            FileInfoes[] relevantFiles = env.Files.Where(s => s.Extents.Length > 1).ToArray();
+
+            Console.WriteLine("Beginning work on {0} files", relevantFiles.Length);
+
+            foreach (FileInfoes file in relevantFiles)
             {
-                int lastError = Marshal.GetLastWin32Error();
-
-                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
-                Console.WriteLine();
-                return;
+                DefragmentFile(env, file);
             }
 
-            DeviceIOControlWrapper driveDeviceIo = new DeviceIOControlWrapper(driveHandle);
+            Console.WriteLine();
+        }
+
+        private static void DefragmentFile(DefragmentEnvironment env, FileInfoes file)
+        {
+            Console.WriteLine("Beginning work on {0}", file.FilePath);
 
             // Find all fragments of the file
-            FileExtentInfo[] extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-            Console.WriteLine("File has {0} fragments", extents.Length);
-
-            if (extents.Length == 1)
+            if (file.Extents.Length <= 1)
             {
                 Console.WriteLine("File is already defragmented");
-                Console.WriteLine();
                 return;
             }
 
+            Console.WriteLine("File has {0} fragments", file.Extents.Length);
+
             // Calculate number of clusters we need to find
-            int clustersNeeded = (int)extents.Sum(s => (decimal)s.Size);
+            int clustersNeeded = (int)file.Extents.Sum(s => (decimal)s.Size);
 
             Console.WriteLine("We need to find {0:N0} free clusters, for this file.", clustersNeeded);
 
-            // Get the drive bitmap
-            VOLUME_BITMAP_BUFFER bitmap = driveDeviceIo.FileSystemGetVolumeBitmap();
-
-            Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
-
             // Find a sequential area of [clustersNeeded] free clusters
-            ulong foundFreeLCN = 0;      // The result of the search
-            uint maxStart = (uint)(bitmap.Buffer.Length - (decimal)clustersNeeded); // There's no point searching beyond this LCN
+            FreeBlock freeBlock = env.FindFreeBlock(0, (ulong)clustersNeeded);
 
-            // Enumerate clusters
-            for (uint i = 0; i < maxStart; i++)
+            // Did we find a free area?
+            if (freeBlock != null)
             {
-                // Check bitmap, find location with [clustersNeeded] free clusters
-                bool found = true;
-                for (uint x = i; x < i + clustersNeeded; x++)
+                Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", freeBlock.Size, freeBlock.Lcn);
+
+                for (int i = 0; i < file.Extents.Length; i++)
                 {
-                    if (bitmap.Buffer[(int)x])
+                    ulong thisLcn = (ulong)(freeBlock.Lcn + file.Extents.Take(i).Sum(s => (decimal)s.Size));
+                    if (!env.MoveFileData(file, file.Extents[i], thisLcn))
                     {
-                        // Found an occupied cluster
-                        found = false;
-
-                        // Advance the pointer, so that we don't have to re-search the same clusters again.
-                        i = x;
-
+                        Console.WriteLine("Unable to move file: '{0}' extent #{1:N0} ({2:N0} clusters) to LCN {3:N0}", Path.GetFileName(file.FilePath), i, file.Extents[i].Size, thisLcn);
                         break;
                     }
                 }
 
-                if (found)
-                {
-                    // We found a free block!
-                    foundFreeLCN = i + bitmap.StartingLcn;
-                    break;
-                }
-            }
-
-            // Did we find a free area?
-            if (foundFreeLCN > 0)
-            {
-                Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", clustersNeeded, foundFreeLCN);
-
-                driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
+                env.CompactFileStructure(file);
             }
             else
             {
                 Console.WriteLine("Unable to find {0:N0} contigous free clusters", clustersNeeded);
             }
 
-            extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-            Console.WriteLine("File now has {0} fragment(s)", extents.Length);
-
-            Console.ReadLine();
-            Console.WriteLine();
-        }
-
-        private static void ExampleDefragmentDir()
-        {
-            const string dir = @"E:\Mike\Dropbox\";
-            string drive = @"\\.\" + Directory.GetDirectoryRoot(dir).Substring(0, 2);
-
-            Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", dir, drive);
-
-            // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FILE_READ_ATTRIBUTES | FILE_WRITE_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
-
-            if (driveHandle.IsInvalid)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-
-                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
-                Console.WriteLine();
-                return;
-            }
-
-            DeviceIOControlWrapper driveDeviceIo = new DeviceIOControlWrapper(driveHandle);
-
-            // Get the drive bitmap
-            VOLUME_BITMAP_BUFFER bitmap = driveDeviceIo.FileSystemGetVolumeBitmap();
-
-            Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
-
-            string[] files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
-            Console.WriteLine("Beginning work on {0} files", files.Length);
-
-            foreach (string file in files)
-            {
-                Console.WriteLine("Beginning work on {0}", file);
-
-                // Open file to defragment
-                SafeFileHandle fileHandle = CreateFile(file, FILE_READ_ATTRIBUTES, FileShare.ReadWrite, IntPtr.Zero,
-                                                         FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
-
-                if (fileHandle.IsInvalid)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-
-                    Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
-                    continue;
-                }
-
-                DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
-
-                // Find all fragments of the file
-                FileExtentInfo[] extents;
-                try
-                {
-                    extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-                }
-                catch (Win32Exception ex)
-                {
-                    Console.WriteLine("Couldn't get file extents: " + ex.Message);
-                    continue;
-                }
-
-                if (extents.Length <= 1)
-                {
-                    Console.WriteLine("File is already defragmented");
-                    continue;
-                }
-
-                Console.WriteLine("File has {0} fragments", extents.Length);
-
-                // Calculate number of clusters we need to find
-                int clustersNeeded = (int)extents.Sum(s => (decimal)s.Size);
-
-                Console.WriteLine("We need to find {0:N0} free clusters, for this file.", clustersNeeded);
-
-                // Find a sequential area of [clustersNeeded] free clusters
-                ulong foundFreeLCN = 0;      // The result of the search
-                uint maxStart = (uint)(bitmap.Buffer.Length - (decimal)clustersNeeded); // There's no point searching beyond this LCN
-
-                // Enumerate clusters
-                for (uint i = 0; i < maxStart; i++)
-                {
-                    // Check bitmap, find location with [clustersNeeded] free clusters
-                    bool found = true;
-                    for (uint x = i; x < i + clustersNeeded; x++)
-                    {
-                        if (bitmap.Buffer[(int)x])
-                        {
-                            // Found an occupied cluster
-                            found = false;
-
-                            // Advance the pointer, so that we don't have to re-search the same clusters again.
-                            i = x;
-
-                            break;
-                        }
-                    }
-
-                    if (found)
-                    {
-                        // We found a free block!
-                        foundFreeLCN = i + bitmap.StartingLcn;
-                        break;
-                    }
-                }
-
-                // Did we find a free area?
-                if (foundFreeLCN > 0)
-                {
-                    Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", clustersNeeded, foundFreeLCN);
-
-                    try
-                    {
-                        driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
-
-                        // Mark newly used areas as used
-                        ulong upperFreeLCN = foundFreeLCN + (ulong)clustersNeeded;
-                        for (ulong i = foundFreeLCN; i < upperFreeLCN; i++)
-                        {
-                            bitmap.Buffer[(int)i] = true;
-                        }
-
-                        // Mark newly freed areas as free
-                        foreach (FileExtentInfo extent in extents)
-                        {
-                            for (ulong i = extent.Lcn; i < extent.Lcn + extent.Size; i++)
-                            {
-                                bitmap.Buffer[(int)i] = false;
-                            }
-                        }
-                    }
-                    catch (Win32Exception ex)
-                    {
-                        Console.WriteLine("Unable to move file: " + ex.Message);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Unable to find {0:N0} contigous free clusters", clustersNeeded);
-                }
-
-                extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-                Console.WriteLine("File now has {0} fragment(s)", extents.Length);
-            }
-
-            Console.WriteLine("Done... ");
-            Console.ReadLine();
+            Console.WriteLine("File now has {0} fragment(s)", file.Extents.Length);
             Console.WriteLine();
         }
 
@@ -585,7 +437,7 @@ namespace DemoApplication
                         }
 
                         // Compact internal structures
-                        env.CompactExtents(file);
+                        env.CompactFileStructure(file);
 
                         // Process next fragmented file
                         continue;
@@ -604,7 +456,7 @@ namespace DemoApplication
                     }
 
                     // Compact internal structures
-                    env.CompactExtents(file);
+                    env.CompactFileStructure(file);
 
                     // Process next fragmented file
                     continue;
@@ -707,51 +559,6 @@ namespace DemoApplication
 
             Console.WriteLine();
         }
-
-        private static List<Tuple<ulong, ulong>> FindFreeSpaces(VOLUME_BITMAP_BUFFER bitmap)
-        {
-            List<Tuple<ulong, ulong>> freeSpaces = new List<Tuple<ulong, ulong>>();
-
-            ulong lastFreeStart = 0;
-            for (ulong i = 1; i < bitmap.BitmapSize; i++)
-            {
-                if (bitmap.Buffer[(int)(i - 1)] && !bitmap.Buffer[(int)i])
-                {
-                    // Switching from used to free
-                    lastFreeStart = i;
-                }
-                else if (!bitmap.Buffer[(int)(i - 1)] && bitmap.Buffer[(int)i])
-                {
-                    // Switching from free to used
-                    freeSpaces.Add(new Tuple<ulong, ulong>(lastFreeStart, i - lastFreeStart));
-                }
-            }
-
-            return freeSpaces;
-        }
-
-        private static Tuple<ulong, ulong> FindFirstFreeSpace(VOLUME_BITMAP_BUFFER bitmap, ulong start, ulong minSize = 1)
-        {
-            start = start == 0 ? 1 : start;
-
-            ulong lastFreeStart = 0;
-            for (ulong i = start; i < bitmap.BitmapSize; i++)
-            {
-                if (bitmap.Buffer[(int)(i - 1)] && !bitmap.Buffer[(int)i])
-                {
-                    // Switching from used to free
-                    lastFreeStart = i;
-                }
-                else if (!bitmap.Buffer[(int)(i - 1)] && bitmap.Buffer[(int)i] && lastFreeStart > start)
-                {
-                    // Switching from free to used
-                    if (i - lastFreeStart >= minSize)
-                        return new Tuple<ulong, ulong>(lastFreeStart, i - lastFreeStart);
-                }
-            }
-
-            return null;
-        }
     }
 
     public class DefragmentEnvironment
@@ -759,6 +566,7 @@ namespace DemoApplication
         public VOLUME_BITMAP_BUFFER Bitmap { get; set; }
         public Dictionary<ulong, FileExtentInfo> ExtentLocations { get; set; }
         public List<FileInfoes> Files { get; set; }
+        public Dictionary<string, FileInfoes> FileNames { get; set; }
 
         private DeviceIOControlWrapper _volumeDeviceIo;
         private string _driveRoot;
@@ -793,6 +601,8 @@ namespace DemoApplication
 
         private void UpdateFiles()
         {
+            FileNames = new Dictionary<string, FileInfoes>();
+
             // Find all files
             List<USN_RECORD_V2> usns = _volumeDeviceIo.FileSystemEnumUsnData().OfType<USN_RECORD_V2>().ToList();
             Dictionary<ulong, USN_RECORD_V2> usnDic = usns.ToDictionary(s => s.FileReferenceNumber);
@@ -850,7 +660,11 @@ namespace DemoApplication
                 }
 
                 if (extents.Length > 0)
-                    Files.Add(new FileInfoes(file, extents));
+                {
+                    FileInfoes fileInfoes = new FileInfoes(file, extents);
+                    Files.Add(fileInfoes);
+                    FileNames[file] = fileInfoes;
+                }
             }
 
             ExtentLocations = Files.SelectMany(s => s.Extents).ToDictionary(s => s.Lcn);
@@ -899,7 +713,7 @@ namespace DemoApplication
             return true;
         }
 
-        public void CompactExtents(FileInfoes file)
+        public void CompactFileStructure(FileInfoes file)
         {
             if (file.Extents.Length <= 1)
                 return;
