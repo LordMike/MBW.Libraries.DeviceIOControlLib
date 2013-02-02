@@ -41,11 +41,11 @@ namespace DemoApplication
             //ExampleFileSystemIO();
 
             // Defragment files
-            //DefragLargeFiles();
+            DefragLargeFiles();
             //DefragFreeSpace();
             //ExampleDefragmentFile(@"E:\Mike\Virtual Machines\Debian\Debian.vmdk");
             //ExampleDefragmentDir();
-            ExampleDefragmentAll();
+            //ExampleDefragmentAll();
 
             //// Open and close CD Rom tray
             //ExampleCdRomIO();
@@ -331,11 +331,12 @@ namespace DemoApplication
                 }
 
                 // Find the biggest possible fragment that can be moved to this freespace
-                FileInfoes largestFile = extentInfos.FirstOrDefault(s => !ignoreFiles.Contains(s.FirstLCN) && s.Extents.Any(x => x.Size < freeSpace.Size));
+                FileInfoes largestFile = extentInfos.FirstOrDefault(s => !ignoreFiles.Contains(s.FirstLCN) && s.Extents.Any(x => x.Size <= freeSpace.Size));
                 FileExtentInfo largestExtent;
 
                 // Either create a bigger gap for the next run, or move something into the gap
-                if (largestFile == null)
+                if (largestFile == null &&
+                    env.ExtentLocations.ContainsKey(freeSpace.Lcn + freeSpace.Size))    // Can we move the next file?
                 {
                     // Select next fragment
                     largestExtent = env.ExtentLocations[freeSpace.Lcn + freeSpace.Size];
@@ -363,9 +364,9 @@ namespace DemoApplication
                         continue;
                     }
                 }
-                else
+                else if (largestFile != null)
                 {
-                    largestExtent = largestFile.Extents.Where(s => s.Size < freeSpace.Size).OrderByDescending(s => s.Size).First();
+                    largestExtent = largestFile.Extents.Where(s => s.Lcn > diskPointer && s.Size <= freeSpace.Size).OrderByDescending(s => s.Size).First();
 
                     if (largestFile.Extents.Length == 1)
                         Console.WriteLine("Found a file at {0:N0} of {1:N0} clusters", largestExtent.Lcn, largestExtent.Size);
@@ -390,6 +391,12 @@ namespace DemoApplication
                     // We managed to move something, clear the ignore files
                     ignoreFiles.Clear();
                 }
+                else
+                {
+                    // Unable to do something
+                    Console.WriteLine("We were unable to do anything...");
+                    diskPointer++;
+                }
 
                 Console.WriteLine();
             } while (true);
@@ -407,65 +414,165 @@ namespace DemoApplication
             DefragmentEnvironment env = new DefragmentEnvironment(drive);
 
             // Handle all fragmented files
-            List<FileInfoes> fragmentedFiles = env.Files.Where(s => s.TotalSize < 1000 && s.Extents.Length > 1).ToList();
+            List<FileInfoes> fragmentedFiles = env.Files.Where(s => s.TotalSize > 5000000 && s.Extents.Length > 1).ToList();
 
             for (int i = 0; i < fragmentedFiles.Count; i++)
             {
-                FreeBlock freeBlock;
                 FileInfoes file = fragmentedFiles[i];
+                Console.WriteLine("Handling file '{0}', size: {1:N0} clusters, fragments: {2:N0}.", Path.GetFileName(file.FilePath), file.TotalSize, file.Extents.Length);
 
-                // Can we move the rest of the file up to after the first extent?
-                FileExtentInfo firstExtent = file.Extents[0];
-                if (!env.Bitmap.Buffer[(int)(firstExtent.Lcn + firstExtent.Size)])
+
+                //// Can we move the rest of the file up to after the first extent?
+                //{
+                //    FileExtentInfo firstExtent = file.Extents[0];
+                //    if (!env.Bitmap.Buffer[(int)(firstExtent.Lcn + firstExtent.Size)])
+                //    {
+                //        // There is a free space, let's see how big it is
+                //        FreeBlock freeBlock = env.FindFreeBlock(firstExtent.Lcn + firstExtent.Size);
+                //        decimal remainingSize = file.Extents.Skip(1).Sum(s => (decimal)s.Size);
+
+                //        if (freeBlock.Size >= remainingSize)
+                //        {
+                //            // It's big enough!
+                //            // Move file there
+                //            for (int j = 1; j < file.Extents.Length; j++)
+                //            {
+                //                ulong thisLcn =
+                //                    (ulong)(freeBlock.Lcn + file.Extents.Take(j - 1).Sum(s => (decimal)s.Size));
+                //                if (!env.MoveFileData(file, file.Extents[j], thisLcn))
+                //                {
+                //                    // Something went wrong
+                //                    break;
+                //                }
+                //            }
+
+                //            // Compact internal structures
+                //            env.CompactFileStructure(file);
+
+                //            // Process next fragmented file
+                //            continue;
+                //        }
+                //    }
+                //}
+
+                //// Can we move the entire file somewhere?
+                //{
+                //    FreeBlock freeBlock = env.FindFreeBlock(0, file.TotalSize);
+
+                //    if (freeBlock != null)
+                //    {
+                //        // Move file there
+                //        for (int j = 0; j < file.Extents.Length; j++)
+                //        {
+                //            env.MoveFileData(file, file.Extents[j],
+                //                             (ulong)(freeBlock.Lcn + file.Extents.Take(j).Sum(s => (decimal)s.Size)));
+                //        }
+
+                //        // Compact internal structures
+                //        env.CompactFileStructure(file);
+
+                //        // Process next fragmented file
+                //        continue;
+                //    }
+                //}
+
+                // Consider finding a large place, and extending on that
                 {
-                    // There is a free space, let's see how big it is
-                    freeBlock = env.FindFreeBlock(firstExtent.Lcn + firstExtent.Size);
-                    decimal remainingSize = file.Extents.Skip(1).Sum(s => (decimal)s.Size);
+                    List<FreeBlock> allFreeBlocks = env.FindFreeBlocks().ToList();
+                    ulong best = ulong.MaxValue;
+                    List<FileExtentInfo> bestToMove = null;
+                    ulong newLcnStart = 0;
 
-                    if (freeBlock.Size >= remainingSize)
+                    foreach (FreeBlock freeBlock in allFreeBlocks)
                     {
-                        // It's big enough!
-                        // Move file there
-                        for (int j = 1; j < file.Extents.Length; j++)
+                        ulong lcnEnd = freeBlock.Lcn + file.TotalSize;
+                        bool usesUnmovable = env.UnmovableExtentLocations.Any(s => freeBlock.Lcn <= s.Key && s.Key + s.Value <= lcnEnd);
+                        if (usesUnmovable)
+                            continue;
+
+                        bestToMove = env.ExtentLocations.Where(s => s.Key > freeBlock.Lcn && s.Key <= freeBlock.Lcn + file.TotalSize).Select(s => s.Value).ToList();
+
+                        ulong toMoveSize = (ulong)bestToMove.Sum(s => (decimal)s.Size);
+
+                        if (toMoveSize > best)
+                            continue;
+
+                        Console.WriteLine("Freeblock ({0:N0}, {1:N0}), to move {2:N0} extents totalling {3:N0} clusters", freeBlock.Lcn, freeBlock.Size, bestToMove.Count, toMoveSize);
+                        best = toMoveSize;
+                        newLcnStart = freeBlock.Lcn;
+                    }
+
+                    if (bestToMove == null)
+                        continue;
+
+                    Console.WriteLine("Found a place! Beginning move of {0} extents", bestToMove.Count);
+
+                    bool movedAllExtents = true;
+                    for (int extentIndex = 0; extentIndex < bestToMove.Count; extentIndex++)
+                    {
+                        FileExtentInfo currExtent = bestToMove[extentIndex];
+                        FileInfoes currFile = env.FileExtents[currExtent];
+
+                        FreeBlock freeBlock = env.FindFreeBlock(0, currExtent.Size);
+                        if ((newLcnStart <= freeBlock.Lcn && freeBlock.Lcn <= newLcnStart + file.TotalSize) ||
+                            newLcnStart <= freeBlock.Lcn + freeBlock.Size &&
+                            freeBlock.Lcn + freeBlock.Size <= newLcnStart + file.TotalSize)
                         {
-                            ulong thisLcn = (ulong)(freeBlock.Lcn + file.Extents.Take(j - 1).Sum(s => (decimal)s.Size));
-                            if (!env.MoveFileData(file, file.Extents[j], thisLcn))
-                            {
-                                // Something went wrong
-                                break;
-                            }
+                            // Chosen freeblock is inside our new block(s)
+                            freeBlock = env.FindFreeBlock(newLcnStart + file.TotalSize, currExtent.Size);
                         }
 
-                        // Compact internal structures
-                        env.CompactFileStructure(file);
+                        if (freeBlock == null)
+                        {
+                            Console.WriteLine("Unable to move extent #{0:N0}", extentIndex);
+                            movedAllExtents = false;
+                            break;
+                        }
 
-                        // Process next fragmented file
+                        Console.WriteLine("Moving extent #{0:N0} of {1:N0} to {2:N0} ({3:N0} clusters)", extentIndex, bestToMove.Count, freeBlock.Lcn, currExtent.Size);
+                        if (!env.MoveFileData(currFile, currExtent, freeBlock.Lcn))
+                        {
+                            Console.WriteLine("Unable to move extent #{0:N0} to {1:N0}", extentIndex, freeBlock.Lcn);
+                            movedAllExtents = false;
+                            break;
+                        }
+
+                        // Compact moved files structure
+                        env.CompactFileStructure(currFile);
+
+                        // Move next file
+                    }
+
+                    if (!movedAllExtents)
+                        continue;
+
+                    Console.WriteLine("Moved all extents, now moving the big file in place.");
+
+                    for (int j = 0; j < file.Extents.Length; j++)
+                    {
+                        FileExtentInfo currExtent = file.Extents[j];
+                        ulong thisLcn = (ulong)(newLcnStart + file.Extents.Take(j).Sum(s => (decimal)s.Size));
+
+                        Console.WriteLine("Moving extent #{0:N0} of {1:N0} to {2:N0} ({3:N0})", j, file.Extents.Length, thisLcn, currExtent.Size);
+                        if (!env.MoveFileData(file, currExtent, thisLcn))
+                        {
+                            Console.WriteLine("Unable to move extent #{0:N0} to {1:N0}", j, thisLcn);
+                            movedAllExtents = false;
+                            break;
+                        }
+                    }
+
+                    // Compact moved files structure
+                    env.CompactFileStructure(file);
+
+                    Console.WriteLine("File now has {0:N0} fragments", file.Extents.Length);
+
+                    if (!movedAllExtents)
+                    {
+                        Console.WriteLine("Failed in completely defragmenting file: '{0}'", Path.GetFileName(file.FilePath));
                         continue;
                     }
                 }
-
-                // Can we move the entire file somewhere?
-                freeBlock = env.FindFreeBlock(0, file.TotalSize);
-
-                if (freeBlock != null)
-                {
-                    // Move file there
-                    for (int j = 0; j < file.Extents.Length; j++)
-                    {
-                        env.MoveFileData(file, file.Extents[j], (ulong)(freeBlock.Lcn + file.Extents.Take(j).Sum(s => (decimal)s.Size)));
-                    }
-
-                    // Compact internal structures
-                    env.CompactFileStructure(file);
-
-                    // Process next fragmented file
-                    continue;
-                }
-
-                //// Find largest fragment
-                //var fragment = file.Extents.Select((extent, index) => new {extent, index}).MaxItem(s => s.extent.Size);
-
-
             }
 
             Console.WriteLine();
@@ -565,8 +672,10 @@ namespace DemoApplication
     {
         public VOLUME_BITMAP_BUFFER Bitmap { get; set; }
         public Dictionary<ulong, FileExtentInfo> ExtentLocations { get; set; }
+        public Dictionary<ulong, ulong> UnmovableExtentLocations { get; set; }
         public List<FileInfoes> Files { get; set; }
         public Dictionary<string, FileInfoes> FileNames { get; set; }
+        public Dictionary<FileExtentInfo, FileInfoes> FileExtents { get; set; }
 
         private DeviceIOControlWrapper _volumeDeviceIo;
         private string _driveRoot;
@@ -575,11 +684,15 @@ namespace DemoApplication
         {
             PrepareVolume(driveLetter);
 
+            // Fetch data
             Task tBitmap = Task.Factory.StartNew(UpdateBitmap).ContinueWith(task => Debug.WriteLine("Fetched bitmap, {0:N0} clusters", Bitmap.BitmapSize));
             Task tFiles = Task.Factory.StartNew(UpdateFiles).ContinueWith(task => Debug.WriteLine("Fetched {0:N0} files", Files.Count));
 
             tBitmap.Wait();
             tFiles.Wait();
+
+            // Parse structure based on above data
+            UpdateUnmovables();
         }
 
         private void PrepareVolume(char driveLetter)
@@ -602,6 +715,7 @@ namespace DemoApplication
         private void UpdateFiles()
         {
             FileNames = new Dictionary<string, FileInfoes>();
+            FileExtents = new Dictionary<FileExtentInfo, FileInfoes>();
 
             // Find all files
             List<USN_RECORD_V2> usns = _volumeDeviceIo.FileSystemEnumUsnData().OfType<USN_RECORD_V2>().ToList();
@@ -664,10 +778,42 @@ namespace DemoApplication
                     FileInfoes fileInfoes = new FileInfoes(file, extents);
                     Files.Add(fileInfoes);
                     FileNames[file] = fileInfoes;
+
+                    foreach (FileExtentInfo fileExtentInfo in extents)
+                    {
+                        FileExtents.Add(fileExtentInfo, fileInfoes);
+                    }
                 }
             }
 
             ExtentLocations = Files.SelectMany(s => s.Extents).ToDictionary(s => s.Lcn);
+        }
+
+        private void UpdateUnmovables()
+        {
+            UnmovableExtentLocations = new Dictionary<ulong, ulong>();
+
+            ulong lastUnknownStart = 0;
+            bool tracking = false;
+            for (ulong i = 0; i < Bitmap.BitmapSize; i++)
+            {
+                if (!tracking && Bitmap.Buffer[(int)i] && !ExtentLocations.ContainsKey(i))
+                {
+                    // A cluster is used, but not known of
+                    lastUnknownStart = i;
+                    tracking = true;
+                }
+                else if (tracking && !Bitmap.Buffer[(int)i] || ExtentLocations.ContainsKey(i))
+                {
+                    // Switching from unknown cluster to known / free
+                    UnmovableExtentLocations[lastUnknownStart] = i - lastUnknownStart;
+
+                    if (ExtentLocations.ContainsKey(i))
+                        i += ExtentLocations[i].Size;
+
+                    tracking = false;
+                }
+            }
         }
 
         public bool MoveFileData(FileInfoes file, FileExtentInfo extent, ulong newLcn)
@@ -751,6 +897,7 @@ namespace DemoApplication
             // Update internal structures
             // Add secondExtent
             ExtentLocations.Add(secondExtent.Lcn, secondExtent);
+            FileExtents.Add(secondExtent, file);
 
             return new Tuple<FileExtentInfo, FileExtentInfo>(extent, secondExtent);
         }
@@ -780,6 +927,7 @@ namespace DemoApplication
                 // Update internal structures
                 // Remove b
                 ExtentLocations.Remove(b.Lcn);
+                FileExtents.Remove(b);
 
                 return true;
             }
@@ -789,25 +937,65 @@ namespace DemoApplication
 
         public FreeBlock FindFreeBlock(ulong startLcn = 0, ulong minSize = 1)
         {
-            startLcn = startLcn == 0 ? 1 : startLcn;
-
             ulong lastFreeStart = 0;
-            for (ulong i = startLcn; i < Bitmap.BitmapSize; i++)
+            bool tracking = false;
+            for (ulong i = startLcn; i < Bitmap.BitmapSize - 1; i++)
             {
-                if (Bitmap.Buffer[(int)(i - 1)] && !Bitmap.Buffer[(int)i])
+                if (!tracking && Bitmap.Buffer[(int)i] && !Bitmap.Buffer[(int)i + 1])
                 {
                     // Switching from used to free
-                    lastFreeStart = i;
+                    lastFreeStart = i + 1;
+                    tracking = true;
                 }
-                else if (!Bitmap.Buffer[(int)(i - 1)] && Bitmap.Buffer[(int)i] && lastFreeStart >= startLcn)
+                else if (tracking && !Bitmap.Buffer[(int)i] && Bitmap.Buffer[(int)i + 1])
                 {
                     // Switching from free to used
-                    if (i - lastFreeStart >= minSize)
-                        return new FreeBlock(lastFreeStart, i - lastFreeStart);
+                    // +1 for including [lastFreeStart]
+                    if (1 + i - lastFreeStart >= minSize)
+                        return new FreeBlock(lastFreeStart, 1 + i - lastFreeStart);
+
+                    tracking = false;
                 }
             }
 
             return null;
+        }
+
+        //public FreeBlock FindFreeBlock(ulong startLcn = 0, ulong minSize = 1)
+        //{
+        //    startLcn = startLcn == 0 ? 1 : startLcn;
+
+        //    ulong lastFreeStart = 0;
+        //    for (ulong i = startLcn; i < Bitmap.BitmapSize; i++)
+        //    {
+        //        if (Bitmap.Buffer[(int)(i - 1)] && !Bitmap.Buffer[(int)i])
+        //        {
+        //            // Switching from used to free
+        //            lastFreeStart = i;
+        //        }
+        //        else if (!Bitmap.Buffer[(int)(i - 1)] && Bitmap.Buffer[(int)i] && lastFreeStart >= startLcn)
+        //        {
+        //            // Switching from free to used
+        //            if (i - lastFreeStart >= minSize)
+        //                return new FreeBlock(lastFreeStart, i - lastFreeStart);
+        //        }
+        //    }
+
+        //    return null;
+        //}
+
+        public IEnumerable<FreeBlock> FindFreeBlocks(ulong startLcn = 0, ulong minSize = 1)
+        {
+            while (true)
+            {
+                FreeBlock freeBlock = FindFreeBlock(startLcn, minSize);
+
+                if (freeBlock == null)
+                    yield break;
+
+                startLcn = freeBlock.Lcn + freeBlock.Size;
+                yield return freeBlock;
+            }
         }
     }
 
