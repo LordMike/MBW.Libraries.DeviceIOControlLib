@@ -421,7 +421,6 @@ namespace DemoApplication
                 FileInfoes file = fragmentedFiles[i];
                 Console.WriteLine("Handling file '{0}', size: {1:N0} clusters, fragments: {2:N0}.", Path.GetFileName(file.FilePath), file.TotalSize, file.Extents.Length);
 
-
                 //// Can we move the rest of the file up to after the first extent?
                 //{
                 //    FileExtentInfo firstExtent = file.Extents[0];
@@ -490,16 +489,17 @@ namespace DemoApplication
                         if (usesUnmovable)
                             continue;
 
-                        bestToMove = env.ExtentLocations.Where(s => s.Key > freeBlock.Lcn && s.Key <= freeBlock.Lcn + file.TotalSize).Select(s => s.Value).ToList();
-
-                        ulong toMoveSize = (ulong)bestToMove.Sum(s => (decimal)s.Size);
+                        List<FileExtentInfo> tmpToMove = env.ExtentLocations.Where(s => s.Key > freeBlock.Lcn && s.Key <= freeBlock.Lcn + file.TotalSize).Select(s => s.Value).ToList();
+                        ulong toMoveSize = (ulong)tmpToMove.Sum(s => (decimal)s.Size);
 
                         if (toMoveSize > best)
                             continue;
 
-                        Console.WriteLine("Freeblock ({0:N0}, {1:N0}), to move {2:N0} extents totalling {3:N0} clusters", freeBlock.Lcn, freeBlock.Size, bestToMove.Count, toMoveSize);
                         best = toMoveSize;
+                        bestToMove = tmpToMove;
                         newLcnStart = freeBlock.Lcn;
+
+                        Console.WriteLine("Freeblock ({0:N0}, {1:N0}), to move {2:N0} extents totalling {3:N0} clusters", freeBlock.Lcn, freeBlock.Size, bestToMove.Count, toMoveSize);
                     }
 
                     if (bestToMove == null)
