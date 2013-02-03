@@ -961,29 +961,6 @@ namespace DemoApplication
             return null;
         }
 
-        //public FreeBlock FindFreeBlock(ulong startLcn = 0, ulong minSize = 1)
-        //{
-        //    startLcn = startLcn == 0 ? 1 : startLcn;
-
-        //    ulong lastFreeStart = 0;
-        //    for (ulong i = startLcn; i < Bitmap.BitmapSize; i++)
-        //    {
-        //        if (Bitmap.Buffer[(int)(i - 1)] && !Bitmap.Buffer[(int)i])
-        //        {
-        //            // Switching from used to free
-        //            lastFreeStart = i;
-        //        }
-        //        else if (!Bitmap.Buffer[(int)(i - 1)] && Bitmap.Buffer[(int)i] && lastFreeStart >= startLcn)
-        //        {
-        //            // Switching from free to used
-        //            if (i - lastFreeStart >= minSize)
-        //                return new FreeBlock(lastFreeStart, i - lastFreeStart);
-        //        }
-        //    }
-
-        //    return null;
-        //}
-
         public IEnumerable<FreeBlock> FindFreeBlocks(ulong startLcn = 0, ulong minSize = 1)
         {
             while (true)
