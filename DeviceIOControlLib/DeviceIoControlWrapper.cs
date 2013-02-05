@@ -99,7 +99,32 @@ namespace DeviceIOControlLib
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365171(v=vs.85).aspx"/></summary>
         public DISK_GEOMETRY_EX DiskGetDriveGeometryEx()
         {
-            return InvokeIoControl<DISK_GEOMETRY_EX>(Handle, IOControlCode.DiskGetDriveGeometryEx);
+            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.DiskGetDriveGeometryEx, 256);
+
+            DISK_GEOMETRY_EX res;
+
+            IntPtr dataPtr = IntPtr.Zero;
+            try
+            {
+                dataPtr = Marshal.AllocHGlobal(data.Length);
+                Marshal.Copy(data, 0, dataPtr, data.Length);
+
+                res.Geometry = (DISK_GEOMETRY)Marshal.PtrToStructure(dataPtr, typeof(DISK_GEOMETRY));
+                res.DiskSize = BitConverter.ToInt64(data, Marshal.SizeOf(typeof(DISK_GEOMETRY)));
+
+                IntPtr tmpPtr = dataPtr + Marshal.SizeOf(typeof(DISK_GEOMETRY)) + sizeof(long);
+                res.PartitionInformation = (DISK_PARTITION_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_PARTITION_INFO));
+
+                tmpPtr += res.PartitionInformation.SizeOfPartitionInfo;
+                res.DiskInt13Info = (DISK_EX_INT13_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_EX_INT13_INFO));
+            }
+            finally
+            {
+                if (dataPtr == IntPtr.Zero)
+                    Marshal.FreeHGlobal(dataPtr);
+            }
+
+            return res;
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365179(v=vs.85).aspx"/></summary>
