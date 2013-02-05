@@ -70,6 +70,16 @@ namespace DemoApplication
 
             Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
 
+            switch (info.PartitionInformation.PartitionStyle)
+            {
+                case PartitionStyle.PARTITION_STYLE_MBR:
+                    Console.WriteLine("MBR Id: " + info.PartitionInformation.MbrSignature);
+                    break;
+                case PartitionStyle.PARTITION_STYLE_GPT:
+                    Console.WriteLine("GPT GUID: " + info.PartitionInformation.GptGuidId);
+                    break;
+            }
+
             PARTITION_INFORMATION_EX partitionInfo = hddDeviceIo.DiskGetPartitionInfoEx();
 
             Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
@@ -399,10 +409,10 @@ namespace DemoApplication
                         driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
 
                         // Mark newly used areas as used
-                        ulong upperFreeLCN = foundFreeLCN + (ulong) clustersNeeded;
+                        ulong upperFreeLCN = foundFreeLCN + (ulong)clustersNeeded;
                         for (ulong i = foundFreeLCN; i < upperFreeLCN; i++)
                         {
-                            bitmap.Buffer[(int) i] = true;
+                            bitmap.Buffer[(int)i] = true;
                         }
 
                         // Mark newly freed areas as free

@@ -257,7 +257,7 @@ namespace DeviceIOControlLib
         [FieldOffset(8)]
         public uint MbrSignature;
         [FieldOffset(8)]
-        public Guid GuidDiskId;
+        public Guid GptGuidId;
     }
 
     [StructLayout(LayoutKind.Sequential)]
