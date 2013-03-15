@@ -33,6 +33,9 @@ namespace DemoApplication
             // Read volume info
             ExampleFileSystemIO();
 
+            // Work with sparse files
+            ExampleSparseFile();
+
             // Defragment files
             //ExampleDefragmentFile();
             //ExampleDefragmentDir();
@@ -530,6 +533,71 @@ namespace DemoApplication
             }
 
             Console.WriteLine();
+        }
+
+        private static void ExampleSparseFile()
+        {
+            string file = Path.GetTempFileName();
+
+            try
+            {
+                // Write file data
+                const int length = 1 * 1024 * 1024; // 1 MB
+                const int sparseLength = 512 * 1024; // 0.5 MB
+                using (FileStream fs = File.OpenWrite(file))
+                {
+                    byte[] data = new byte[length];
+                    for (int i = 0; i < data.Length; i++)
+                        data[i] = 1;        // Set the data to non-zero
+                    fs.Write(data, 0, data.Length);
+                }
+
+                Console.WriteLine(@"## Exmaple with {0} ##", file);
+                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                {
+                    if (fileHandle.IsInvalid)
+                    {
+                        int lastError = Marshal.GetLastWin32Error();
+
+                        Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
+                        Console.WriteLine();
+                        return;
+                    }
+
+                    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+
+                    FileInfo fileInfo = new FileInfo(file);
+                    Console.WriteLine("File size: " + fileInfo.Length);
+                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                    // Enable sparse ranges
+                    Console.WriteLine("Enabling Sparse file");
+                    fileDeviceIo.FileSystemSetSparseFile(true);
+
+                    fileInfo.Refresh();
+                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                    // Set sparse range
+                    Console.WriteLine("  Setting sparse range: " + sparseLength + " (length: " + ((fileInfo.Length - sparseLength) / 2) + ")");
+                    fileDeviceIo.FileSystemSetZeroData(sparseLength, (fileInfo.Length - sparseLength) / 2);
+
+                    // Query sparse range
+                    fileInfo.Refresh();
+                    FILE_ALLOCATED_RANGE_BUFFER[] ranges = fileDeviceIo.FileSystemQueryAllocatedRanges(0, length);
+                    Console.WriteLine("File size: " + fileInfo.Length);
+
+                    Console.WriteLine("Sparse ranges (" + ranges.Length + "):");
+                    foreach (FILE_ALLOCATED_RANGE_BUFFER range in ranges)
+                    {
+                        Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
+                    }
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                    File.Delete(file);
+            }
         }
     }
 }

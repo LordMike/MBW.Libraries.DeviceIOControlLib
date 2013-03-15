@@ -611,7 +611,31 @@ namespace DeviceIOControlLib
         //FsctlOplockBreakAckNo2
         //FsctlOplockBreakAcknowledge
         //FsctlOplockBreakNotify
-        //FsctlQueryAllocatedRanges
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364582(v=vs.85).aspx"/></summary>
+        public FILE_ALLOCATED_RANGE_BUFFER[] FileSystemQueryAllocatedRanges(long offset, long length)
+        {
+            FILE_ALLOCATED_RANGE_BUFFER input = new FILE_ALLOCATED_RANGE_BUFFER();
+            input.FileOffset = offset;
+            input.Length = offset + length;
+
+            byte[] res = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlQueryAllocatedRanges, input, 512);
+
+            int singleSize = Marshal.SizeOf(typeof(FILE_ALLOCATED_RANGE_BUFFER));
+            List<FILE_ALLOCATED_RANGE_BUFFER> ranges = new List<FILE_ALLOCATED_RANGE_BUFFER>();
+
+            for (int i = 0; i < res.Length; i += singleSize)
+            {
+                FILE_ALLOCATED_RANGE_BUFFER single = new FILE_ALLOCATED_RANGE_BUFFER();
+                single.FileOffset = BitConverter.ToInt64(res, i);
+                single.Length = BitConverter.ToInt64(res, i + 8);
+
+                ranges.Add(single);
+            }
+
+            return ranges.ToArray();
+        }
+
         //FsctlQueryFatBpb
         //FsctlQueryRetrievalPointers
         //FsctlQueryOnDiskVolumeInfo
@@ -631,8 +655,26 @@ namespace DeviceIOControlLib
         //FsctlSetObjectId
         //FsctlSetObjectIdExtended
         //FsctlSetReparsePoint
-        //FsctlSetSparse
-        //FsctlSetZeroData
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364596(v=vs.85).aspx"/></summary>
+        public void FileSystemSetSparseFile(bool setSparse)
+        {
+            FILE_SET_SPARSE_BUFFER input = new FILE_SET_SPARSE_BUFFER();
+            input.SetSparse = setSparse;
+
+            InvokeIoControl(Handle, IOControlCode.FsctlSetSparse, input);
+        }
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364597(v=vs.85).aspx"/></summary>
+        public void FileSystemSetZeroData(long fileOffset, long length)
+        {
+            FILE_ZERO_DATA_INFORMATION input = new FILE_ZERO_DATA_INFORMATION();
+            input.FileOffset = fileOffset;
+            input.BeyondFinalZero = fileOffset + length;
+
+            InvokeIoControl(Handle, IOControlCode.FsctlSetZeroData, input);
+        }
+
         //FsctlSisCopyFile
         //FsctlSisLinkFiles
         //FsctlUnlockVolume

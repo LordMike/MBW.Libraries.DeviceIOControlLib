@@ -583,4 +583,25 @@ namespace DeviceIOControlLib
         public ulong StartingLcn;
         public uint ClusterCount;
     }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FILE_SET_SPARSE_BUFFER
+    {
+        [MarshalAs(UnmanagedType.U1)]
+        public bool SetSparse;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FILE_ZERO_DATA_INFORMATION
+    {
+        public long FileOffset;
+        public long BeyondFinalZero;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct FILE_ALLOCATED_RANGE_BUFFER
+    {
+        public long FileOffset;
+        public long Length;
+    }
 }
