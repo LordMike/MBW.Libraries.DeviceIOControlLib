@@ -848,6 +848,9 @@ namespace DeviceIOControlLib
                 }
 
                 // Return the result
+                if (output.Length == returnedBytes)
+                    return output;
+
                 byte[] res = new byte[returnedBytes];
                 Array.Copy(output, res, returnedBytes);
 
@@ -885,7 +888,7 @@ namespace DeviceIOControlLib
                 }
 
                 // Return the result
-                if (output.Length == outputLength)
+                if (output.Length == returnedBytes)
                     return output;
 
                 byte[] res = new byte[returnedBytes];
