@@ -423,7 +423,13 @@ namespace DeviceIOControlLib
         }
 
         //FsctlFindFilesBySid
-        //FsctlGetCompression
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364567(v=vs.85).aspx"/></summary>
+        public COMPRESSION_FORMAT FileSystemGetCompression()
+        {
+            return (COMPRESSION_FORMAT) InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
+        }
+
         //FsctlGetHfsInformation
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/aa364568(v=vs.85).aspx"/></summary>
@@ -650,7 +656,13 @@ namespace DeviceIOControlLib
         //FsctlRequestOplockLevel1
         //FsctlRequestOplockLevel2
         //FsctlSecurityIdCheck
-        //FsctlSetCompression
+
+        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364592(v=vs.85).aspx"/></summary>
+        public void FileSystemSetCompression(COMPRESSION_FORMAT level)
+        {
+            InvokeIoControl(Handle, IOControlCode.FsctlSetCompression, (ushort)level);
+        }
+
         //FsctlSetEncryption
         //FsctlSetObjectId
         //FsctlSetObjectIdExtended

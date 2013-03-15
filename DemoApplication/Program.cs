@@ -6,6 +6,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using DeviceIOControlLib;
 using Microsoft.Win32.SafeHandles;
@@ -25,6 +26,18 @@ namespace DemoApplication
            [MarshalAs(UnmanagedType.U4)] FileAttributes dwFlagsAndAttributes,
            IntPtr hTemplateFile);
 
+        [DllImport("kernel32.dll")]
+        static extern uint GetCompressedFileSize(string lpFileName, out uint lpFileSizeHigh);
+
+        private static long GetCompressedSize(string fileName)
+        {
+            uint highOrder;
+            long lowOrder = GetCompressedFileSize(fileName, out highOrder);
+            long tmp = (long)highOrder << 32;
+
+            return tmp | lowOrder;
+        }
+
         private static void Main()
         {
             // Read disk sector size
@@ -35,6 +48,9 @@ namespace DemoApplication
 
             // Work with sparse files
             ExampleSparseFile();
+
+            // Work with compressed files
+            ExampleCompression();
 
             // Defragment files
             //ExampleDefragmentFile();
@@ -591,6 +607,56 @@ namespace DemoApplication
                     {
                         Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
                     }
+                }
+            }
+            finally
+            {
+                if (File.Exists(file))
+                    File.Delete(file);
+            }
+        }
+
+        private static void ExampleCompression()
+        {
+            string file = Path.GetTempFileName();
+
+            try
+            {
+                // Write file data
+                using (FileStream fs = File.OpenWrite(file))
+                {
+                    byte[] data = Encoding.ASCII.GetBytes("The white bunny jumps over the brown dog in a carparking lot");
+
+                    for (int i = 0; i < 20000; i++)
+                    {
+                        fs.Write(data, 0, data.Length);
+                    }
+                }
+
+                Console.WriteLine(@"## Exmaple with {0} ##", file);
+                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                {
+                    if (fileHandle.IsInvalid)
+                    {
+                        int lastError = Marshal.GetLastWin32Error();
+
+                        Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
+                        Console.WriteLine();
+                        return;
+                    }
+
+                    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+
+                    FileInfo fileInfo = new FileInfo(file);
+                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileDeviceIo.FileSystemGetCompression());
+
+                    Console.WriteLine("  Enabling compression (LZNT1)");
+                    fileDeviceIo.FileSystemSetCompression(COMPRESSION_FORMAT.LZNT1);
+
+                    fileInfo.Refresh();
+                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileDeviceIo.FileSystemGetCompression());
                 }
             }
             finally

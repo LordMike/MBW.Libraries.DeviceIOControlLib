@@ -604,4 +604,11 @@ namespace DeviceIOControlLib
         public long FileOffset;
         public long Length;
     }
+
+    public enum COMPRESSION_FORMAT : ushort
+    {
+        NONE = 0,
+        DEFAULT = 1,
+        LZNT1 = 2
+    }
 }
