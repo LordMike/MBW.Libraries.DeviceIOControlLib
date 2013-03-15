@@ -574,7 +574,7 @@ namespace DeviceIOControlLib
         /// </summary>
         public ulong Size { get; set; }
     }
-    
+
     [StructLayout(LayoutKind.Sequential)]
     public struct MOVE_FILE_DATA
     {
