@@ -9,8 +9,10 @@ using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib
 {
-    public class DeviceIOControlWrapper
+    public class DeviceIOControlWrapper : IDisposable
     {
+        private readonly bool _ownsHandle;
+
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         private static extern bool DeviceIoControl(
             SafeFileHandle hDevice,
@@ -38,11 +40,12 @@ namespace DeviceIOControlLib
 
         public SafeFileHandle Handle { get; private set; }
 
-        public DeviceIOControlWrapper(SafeFileHandle handle)
+        public DeviceIOControlWrapper(SafeFileHandle handle, bool ownsHandle = false)
         {
             if (handle.IsInvalid)
                 throw new ArgumentException("Handle is invalid");
 
+            _ownsHandle = ownsHandle;
             Handle = handle;
         }
 
@@ -427,7 +430,7 @@ namespace DeviceIOControlLib
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364567(v=vs.85).aspx"/></summary>
         public COMPRESSION_FORMAT FileSystemGetCompression()
         {
-            return (COMPRESSION_FORMAT) InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
+            return (COMPRESSION_FORMAT)InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
         }
 
         //FsctlGetHfsInformation
@@ -950,6 +953,18 @@ namespace DeviceIOControlLib
 
                 return res;
             } while (true);
+        }
+
+        public void Close()
+        {
+            if (Handle != null && !Handle.IsClosed)
+                Handle.Close();
+        }
+
+        public void Dispose()
+        {
+            if (_ownsHandle)
+                Close();
         }
     }
 }
