@@ -26,7 +26,7 @@ How to use - simple use scenarios
 
 **Opening and closing CD-ROM trays**
 
-A simple scenario is to open the CDRom tray. First we need a handle to the CDRom device. A great tool to discover devices is the [Sysinternals Winobj][1] program. My CD-ROM drive is named: "\\.\CdRom0". I then use the [Win32 CreateFile()][2] to open the device. I do this with Win32 instead of FileStream as FileStream doesn't support devices - sadly.
+A simple scenario is to open the CD-ROM tray. First we need a handle to the CD-ROM device. A great tool to discover devices is the [Sysinternals Winobj][1] program. My CD-ROM drive is named: "\\.\CdRom0". I then use the [Win32 CreateFile()][2] to open the device. I do this with Win32 instead of FileStream as FileStream doesn't support devices - sadly.
 
     using System;
     using System.IO;
@@ -67,7 +67,7 @@ In the code above, we have all the boilerplate as well (such as the CreateFile D
 
 **Reading out information about hard drives**
 
-The thing that got me started, was reading out sector sizes. So, lets do that. Working from code above, we open a handle to PhysicalDriveN instead (all hard drives attached are mapped this way).
+The thing that got me started, was reading out sector sizes. So, let’s do that. Working from code above, we open a handle to PhysicalDriveN instead (all hard drives attached are mapped this way).
 
     SafeFileHandle safeHandle = CreateFile(@"\\.\PhysicalDrive0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
@@ -84,9 +84,9 @@ This structure (DISK\_GEOMETRY\_EX) contains all the info directly from the Win3
 Improvement / Design / Future
 --------------------
 
-The library is no where near complete, and never will be, as all driver developers are free to add their own control codes. What I intend to do, is create a baseline where the most commonly used control codes (like those Microsoft make available) are implemented. I've made it possible to call the DeviceIOControl method directly (without having to map the function in the library), so you may use it as you please.
+The library is nowhere near complete, and never will be, as all driver developers are free to add their own control codes. What I intend to do, is create a baseline where the most commonly used control codes (like those Microsoft make available) are implemented. I've made it possible to call the DeviceIOControl method directly (without having to map the function in the library), so you may use it as you please.
 
-As a design guideline, I intend to put all structures, enums and such in a file called "DeviceIO*.cs" where '*' is the name of the device type. e.g. all Disk structures and enums are in "DeviceIODisk.cs". The methods themselves are implemented in DeviceIoControlWrapper.cs
+As a design guideline, I intend to put all structures, enums and such in a file called "DeviceIO*.cs" where '*' is the name of the device type. E.g. all Disk structures and enums are in "DeviceIODisk.cs". The methods themselves are implemented in DeviceIoControlWrapper.cs
 
 I also try best possible, to link to a page describing the details and quirks of each method. E.g.
 
