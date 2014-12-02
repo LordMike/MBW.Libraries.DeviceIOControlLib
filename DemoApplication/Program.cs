@@ -17,7 +17,7 @@ namespace DemoApplication
     class Program
     {
         [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        public static extern SafeFileHandle CreateFile(
+        private static extern SafeFileHandle CreateFile(
            string lpFileName,
            [MarshalAs(UnmanagedType.U4)] FileAccess dwDesiredAccess,
            [MarshalAs(UnmanagedType.U4)] FileShare dwShareMode,
@@ -27,7 +27,7 @@ namespace DemoApplication
            IntPtr hTemplateFile);
 
         [DllImport("kernel32.dll")]
-        static extern uint GetCompressedFileSize(string lpFileName, out uint lpFileSizeHigh);
+        private static extern uint GetCompressedFileSize(string lpFileName, out uint lpFileSizeHigh);
 
         private static long GetCompressedSize(string fileName)
         {
@@ -71,8 +71,7 @@ namespace DemoApplication
             const string drive = @"\\.\PhysicalDrive0";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                                                  FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (hddHandle.IsInvalid)
             {
@@ -111,8 +110,7 @@ namespace DemoApplication
             const string drive = @"\\.\C:";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
             {
@@ -467,8 +465,7 @@ namespace DemoApplication
             const string drive = @"\\.\CdRom0";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle cdTrayHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            SafeFileHandle cdTrayHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (cdTrayHandle.IsInvalid)
             {
@@ -502,8 +499,7 @@ namespace DemoApplication
             const string drive = @"\\.\C:";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
             {
