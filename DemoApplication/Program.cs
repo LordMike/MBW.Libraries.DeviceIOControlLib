@@ -89,7 +89,7 @@ namespace DemoApplication
                 return;
             }
 
-            using (UsnDeviceWrapper usnIo = new UsnDeviceWrapper(hddHandle))
+            using (UsnDeviceWrapper usnIo = new UsnDeviceWrapper(hddHandle, true))
             {
                 USN_JOURNAL_DATA_V0 data = usnIo.FileSystemQueryUsnJournal();
 
@@ -115,7 +115,7 @@ namespace DemoApplication
                 return;
             }
 
-            using (DiskDeviceWrapper diskIo = new DiskDeviceWrapper(hddHandle))
+            using (DiskDeviceWrapper diskIo = new DiskDeviceWrapper(hddHandle, true))
             {
                 DISK_GEOMETRY_EX info = diskIo.DiskGetDriveGeometryEx();
 
@@ -223,7 +223,9 @@ namespace DemoApplication
                 }
 
                 // Bitmap
-                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap(0);
+                VOLUME_BITMAP_BUFFER bitmap;
+                using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
+                    bitmap = fsIo.FileSystemGetVolumeBitmap(0);
 
                 Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
 
@@ -238,7 +240,9 @@ namespace DemoApplication
                 Console.WriteLine("Unallocated clusters: {0:N0}", falses);
 
                 // NTFS Base LCN (always 0)
-                RETRIEVAL_POINTER_BASE basePointer = fsIo.FileSystemGetRetrievalPointerBase();
+                RETRIEVAL_POINTER_BASE basePointer;
+                using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
+                    basePointer = fsIo.FileSystemGetRetrievalPointerBase();
                 Console.WriteLine("Base LCN: {0:N0}", basePointer.FileAreaOffset);
             }
 
@@ -278,8 +282,8 @@ namespace DemoApplication
                 return;
             }
 
-            using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
-            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle))
+            using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle, true))
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle, true))
             {
                 // Find all fragments of the file
                 FileExtentInfo[] extents = fileIo.FileSystemGetRetrievalPointers();
@@ -373,7 +377,7 @@ namespace DemoApplication
                 return;
             }
 
-            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle))
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle, true))
             {
                 // Get the drive bitmap
                 VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap();
@@ -399,7 +403,7 @@ namespace DemoApplication
                         continue;
                     }
 
-                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
+                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle, true))
                     {
                         // Find all fragments of the file
                         FileExtentInfo[] extents;
@@ -518,7 +522,7 @@ namespace DemoApplication
                 return;
             }
 
-            using (StorageDeviceWrapper storageIo = new StorageDeviceWrapper(cdTrayHandle))
+            using (StorageDeviceWrapper storageIo = new StorageDeviceWrapper(cdTrayHandle, true))
             {
                 // Open tray
                 Console.WriteLine("Opening {0}", drive);
@@ -553,7 +557,7 @@ namespace DemoApplication
                 return;
             }
 
-            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle, true))
             {
                 // Bitmap
                 VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap();
@@ -609,44 +613,43 @@ namespace DemoApplication
                 }
 
                 Console.WriteLine(@"## Exmaple with {0} ##", file);
-                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+                if (fileHandle.IsInvalid)
                 {
-                    if (fileHandle.IsInvalid)
+                    int lastError = Marshal.GetLastWin32Error();
+
+                    Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
+                    Console.WriteLine();
+                    return;
+                }
+
+                using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle, true))
+                {
+                    FileInfo fileInfo = new FileInfo(file);
+                    Console.WriteLine("File size: " + fileInfo.Length);
+                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                    // Enable sparse ranges
+                    Console.WriteLine("Enabling Sparse file");
+                    fileIo.FileSystemSetSparseFile(true);
+
+                    fileInfo.Refresh();
+                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                    // Set sparse range
+                    Console.WriteLine("  Setting sparse range: " + sparseLength + " (length: " + ((fileInfo.Length - sparseLength) / 2) + ")");
+                    fileIo.FileSystemSetZeroData(sparseLength, (fileInfo.Length - sparseLength) / 2);
+
+                    // Query sparse range
+                    fileInfo.Refresh();
+                    FILE_ALLOCATED_RANGE_BUFFER[] ranges = fileIo.FileSystemQueryAllocatedRanges(0, length);
+                    Console.WriteLine("File size: " + fileInfo.Length);
+
+                    Console.WriteLine("Sparse ranges (" + ranges.Length + "):");
+                    foreach (FILE_ALLOCATED_RANGE_BUFFER range in ranges)
                     {
-                        int lastError = Marshal.GetLastWin32Error();
-
-                        Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
-                        Console.WriteLine();
-                        return;
-                    }
-
-                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
-                    {
-                        FileInfo fileInfo = new FileInfo(file);
-                        Console.WriteLine("File size: " + fileInfo.Length);
-                        Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
-
-                        // Enable sparse ranges
-                        Console.WriteLine("Enabling Sparse file");
-                        fileIo.FileSystemSetSparseFile(true);
-
-                        fileInfo.Refresh();
-                        Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
-
-                        // Set sparse range
-                        Console.WriteLine("  Setting sparse range: " + sparseLength + " (length: " + ((fileInfo.Length - sparseLength) / 2) + ")");
-                        fileIo.FileSystemSetZeroData(sparseLength, (fileInfo.Length - sparseLength) / 2);
-
-                        // Query sparse range
-                        fileInfo.Refresh();
-                        FILE_ALLOCATED_RANGE_BUFFER[] ranges = fileIo.FileSystemQueryAllocatedRanges(0, length);
-                        Console.WriteLine("File size: " + fileInfo.Length);
-
-                        Console.WriteLine("Sparse ranges (" + ranges.Length + "):");
-                        foreach (FILE_ALLOCATED_RANGE_BUFFER range in ranges)
-                        {
-                            Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
-                        }
+                        Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
                     }
                 }
             }
@@ -675,30 +678,29 @@ namespace DemoApplication
                 }
 
                 Console.WriteLine(@"## Exmaple with {0} ##", file);
-                using (SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero))
+                SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+                if (fileHandle.IsInvalid)
                 {
-                    if (fileHandle.IsInvalid)
-                    {
-                        int lastError = Marshal.GetLastWin32Error();
+                    int lastError = Marshal.GetLastWin32Error();
 
-                        Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
-                        Console.WriteLine();
-                        return;
-                    }
+                    Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
+                    Console.WriteLine();
+                    return;
+                }
 
-                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
-                    {
-                        FileInfo fileInfo = new FileInfo(file);
-                        Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
-                        Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
+                using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle, true))
+                {
+                    FileInfo fileInfo = new FileInfo(file);
+                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
 
-                        Console.WriteLine("  Enabling compression (LZNT1)");
-                        fileIo.FileSystemSetCompression(COMPRESSION_FORMAT.LZNT1);
+                    Console.WriteLine("  Enabling compression (LZNT1)");
+                    fileIo.FileSystemSetCompression(COMPRESSION_FORMAT.LZNT1);
 
-                        fileInfo.Refresh();
-                        Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
-                        Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
-                    }
+                    fileInfo.Refresh();
+                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
                 }
             }
             finally
