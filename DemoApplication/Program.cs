@@ -46,7 +46,7 @@ namespace DemoApplication
         {
             // Read USN Journal
             ExampleUsnJournal();
-            
+
             // Read disk sector size
             ExampleDiskIO();
 
@@ -89,11 +89,12 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper hddDeviceIo = new DeviceIOControlWrapper(hddHandle);
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(hddHandle))
+            {
+                USN_JOURNAL_DATA_V0 data = fsIo.FileSystemQueryUsnJournal();
 
-            USN_JOURNAL_DATA_V0 data = hddDeviceIo.FileSystemQueryUsnJournal();
-
-            Console.WriteLine("USN #: {0:N0}", data.UsnJournalID);
+                Console.WriteLine("USN #: {0:N0}", data.UsnJournalID);
+            }
 
             Console.WriteLine();
         }
@@ -114,25 +115,26 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper hddDeviceIo = new DeviceIOControlWrapper(hddHandle);
-
-            DISK_GEOMETRY_EX info = hddDeviceIo.DiskGetDriveGeometryEx();
-
-            Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
-
-            switch (info.PartitionInformation.PartitionStyle)
+            using (DiskDeviceWrapper diskIo = new DiskDeviceWrapper(hddHandle))
             {
-                case PartitionStyle.PARTITION_STYLE_MBR:
-                    Console.WriteLine("MBR Id: " + info.PartitionInformation.MbrSignature);
-                    break;
-                case PartitionStyle.PARTITION_STYLE_GPT:
-                    Console.WriteLine("GPT GUID: " + info.PartitionInformation.GptGuidId);
-                    break;
+                DISK_GEOMETRY_EX info = diskIo.DiskGetDriveGeometryEx();
+
+                Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
+
+                switch (info.PartitionInformation.PartitionStyle)
+                {
+                    case PartitionStyle.PARTITION_STYLE_MBR:
+                        Console.WriteLine("MBR Id: " + info.PartitionInformation.MbrSignature);
+                        break;
+                    case PartitionStyle.PARTITION_STYLE_GPT:
+                        Console.WriteLine("GPT GUID: " + info.PartitionInformation.GptGuidId);
+                        break;
+                }
+
+                PARTITION_INFORMATION_EX partitionInfo = diskIo.DiskGetPartitionInfoEx();
+
+                Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
             }
-
-            PARTITION_INFORMATION_EX partitionInfo = hddDeviceIo.DiskGetPartitionInfoEx();
-
-            Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
 
             Console.WriteLine();
         }
@@ -153,86 +155,87 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
-
-            // Extract a complete file list from the target drive
-            IUSN_RECORD[] usnData = volumeDeviceIo.FileSystemEnumUsnData();
-            Console.WriteLine("Found {0:N0} file/folder records", usnData.Length);
-
-            // Count the unique file names
-            int usnNameUniques = new HashSet<string>(usnData.Select(s => s.FileName)).Count;
-            Console.WriteLine("Found {0:N0} unique names on records", usnNameUniques);
-
-            // Prepare a dictionary to resolve parents
-            Dictionary<ulong, USN_RECORD_V2> usnDic = usnData.OfType<USN_RECORD_V2>().ToDictionary(s => s.FileReferenceNumber);
-
-            const string root = drive + "\\";
-
-            List<string> files = new List<string>();
-            List<string> parents = new List<string>();
-
-            foreach (USN_RECORD_V2 usnRecord in usnData.OfType<USN_RECORD_V2>())
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
             {
-                parents.Clear();
+                // Extract a complete file list from the target drive
+                IUSN_RECORD[] usnData = fsIo.FileSystemEnumUsnData();
+                Console.WriteLine("Found {0:N0} file/folder records", usnData.Length);
 
-                USN_RECORD_V2 current = usnRecord;
-                while (usnDic.ContainsKey(current.ParentFileReferenceNumber))
+                // Count the unique file names
+                int usnNameUniques = new HashSet<string>(usnData.Select(s => s.FileName)).Count;
+                Console.WriteLine("Found {0:N0} unique names on records", usnNameUniques);
+
+                // Prepare a dictionary to resolve parents
+                Dictionary<ulong, USN_RECORD_V2> usnDic = usnData.OfType<USN_RECORD_V2>().ToDictionary(s => s.FileReferenceNumber);
+
+                const string root = drive + "\\";
+
+                List<string> files = new List<string>();
+                List<string> parents = new List<string>();
+
+                foreach (USN_RECORD_V2 usnRecord in usnData.OfType<USN_RECORD_V2>())
                 {
-                    current = usnDic[current.ParentFileReferenceNumber];
-                    parents.Add(current.FileName);
+                    parents.Clear();
+
+                    USN_RECORD_V2 current = usnRecord;
+                    while (usnDic.ContainsKey(current.ParentFileReferenceNumber))
+                    {
+                        current = usnDic[current.ParentFileReferenceNumber];
+                        parents.Add(current.FileName);
+                    }
+
+                    parents.Reverse();
+
+                    string path = Path.Combine(root, Path.Combine(parents.ToArray()), usnRecord.FileName);
+                    files.Add(path);
                 }
 
-                parents.Reverse();
+                // Sort all files in lexicographical order
+                files.Sort();
 
-                string path = Path.Combine(root, Path.Combine(parents.ToArray()), usnRecord.FileName);
-                files.Add(path);
-            }
+                // FS Stats
+                FileSystemStats[] fsStats = fsIo.FileSystemGetStatistics();
 
-            // Sort all files in lexicographical order
-            files.Sort();
-
-            // FS Stats
-            FileSystemStats[] fsStats = volumeDeviceIo.FileSystemGetStatistics();
-
-            for (int i = 0; i < fsStats.Length; i++)
-            {
-                switch (fsStats[i].Stats.FileSystemType)
+                for (int i = 0; i < fsStats.Length; i++)
                 {
-                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_NTFS:
-                        NTFS_STATISTICS ntfsStats = (NTFS_STATISTICS)fsStats[i].FSStats;
-                        Console.WriteLine("Processor {0}: (NTFS)  MFT Reads/Writes: {1,7:N0} / {2,7:N0}", i, ntfsStats.MftReads, ntfsStats.MftWrites);
-                        break;
-                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_FAT:
-                        FAT_STATISTICS fatStats = (FAT_STATISTICS)fsStats[i].FSStats;
-                        Console.WriteLine("Processor {0}: (FAT)   Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, fatStats.NonCachedDiskReads, fatStats.NonCachedDiskWrites);
-                        break;
-                    case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_EXFAT:
-                        EXFAT_STATISTICS exfatStats = (EXFAT_STATISTICS)fsStats[i].FSStats;
-                        Console.WriteLine("Processor {0}: (EXFAT) Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, exfatStats.NonCachedDiskReads, exfatStats.NonCachedDiskWrites);
-                        break;
-                    default:
-                        throw new ArgumentOutOfRangeException();
+                    switch (fsStats[i].Stats.FileSystemType)
+                    {
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_NTFS:
+                            NTFS_STATISTICS ntfsStats = (NTFS_STATISTICS)fsStats[i].FSStats;
+                            Console.WriteLine("Processor {0}: (NTFS)  MFT Reads/Writes: {1,7:N0} / {2,7:N0}", i, ntfsStats.MftReads, ntfsStats.MftWrites);
+                            break;
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_FAT:
+                            FAT_STATISTICS fatStats = (FAT_STATISTICS)fsStats[i].FSStats;
+                            Console.WriteLine("Processor {0}: (FAT)   Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, fatStats.NonCachedDiskReads, fatStats.NonCachedDiskWrites);
+                            break;
+                        case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_EXFAT:
+                            EXFAT_STATISTICS exfatStats = (EXFAT_STATISTICS)fsStats[i].FSStats;
+                            Console.WriteLine("Processor {0}: (EXFAT) Noncached Disk Reads/Writes: {1,7:N0} / {2,7:N0}", i, exfatStats.NonCachedDiskReads, exfatStats.NonCachedDiskWrites);
+                            break;
+                        default:
+                            throw new ArgumentOutOfRangeException();
+                    }
                 }
+
+                // Bitmap
+                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap(0);
+
+                Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
+
+                int trues = 0, falses = 0;
+                for (int i = 0; i < bitmap.Buffer.Length; i++)
+                    if (bitmap.Buffer[i])
+                        trues++;
+                    else
+                        falses++;
+
+                Console.WriteLine("Allocated clusters: {0:N0}", trues);
+                Console.WriteLine("Unallocated clusters: {0:N0}", falses);
+
+                // NTFS Base LCN (always 0)
+                RETRIEVAL_POINTER_BASE basePointer = fsIo.FileSystemGetRetrievalPointerBase();
+                Console.WriteLine("Base LCN: {0:N0}", basePointer.FileAreaOffset);
             }
-
-            // Bitmap
-            VOLUME_BITMAP_BUFFER bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
-
-            Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
-
-            int trues = 0, falses = 0;
-            for (int i = 0; i < bitmap.Buffer.Length; i++)
-                if (bitmap.Buffer[i])
-                    trues++;
-                else
-                    falses++;
-
-            Console.WriteLine("Allocated clusters: {0:N0}", trues);
-            Console.WriteLine("Unallocated clusters: {0:N0}", falses);
-
-            // NTFS Base LCN (always 0)
-            RETRIEVAL_POINTER_BASE basePointer = volumeDeviceIo.FileSystemGetRetrievalPointerBase();
-            Console.WriteLine("Base LCN: {0:N0}", basePointer.FileAreaOffset);
 
             Console.WriteLine();
         }
@@ -257,8 +260,6 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
-
             // Open volume to defragment on
             SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
                                                      FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
@@ -272,150 +273,29 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper driveDeviceIo = new DeviceIOControlWrapper(driveHandle);
-
-            // Find all fragments of the file
-            FileExtentInfo[] extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-            Console.WriteLine("File has {0} fragments", extents.Length);
-
-            if (extents.Length == 1)
+            using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle))
             {
-                Console.WriteLine("File is already defragmented");
-                Console.WriteLine();
-                return;
-            }
-
-            // Calculate number of clusters we need to find
-            int clustersNeeded = (int)extents.Sum(s => (decimal)s.Size);
-
-            Console.WriteLine("We need to find {0:N0} free clusters, for this file.", clustersNeeded);
-
-            // Get the drive bitmap
-            VOLUME_BITMAP_BUFFER bitmap = driveDeviceIo.FileSystemGetVolumeBitmap();
-
-            Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
-
-            // Find a sequential area of [clustersNeeded] free clusters
-            ulong foundFreeLCN = 0;      // The result of the search
-            uint maxStart = (uint)(bitmap.Buffer.Length - (decimal)clustersNeeded); // There's no point searching beyond this LCN
-
-            // Enumerate clusters
-            for (uint i = 0; i < maxStart; i++)
-            {
-                // Check bitmap, find location with [clustersNeeded] free clusters
-                bool found = true;
-                for (uint x = i; x < i + clustersNeeded; x++)
-                {
-                    if (bitmap.Buffer[(int)x])
-                    {
-                        // Found an occupied cluster
-                        found = false;
-
-                        // Advance the pointer, so that we don't have to re-search the same clusters again.
-                        i = x;
-
-                        break;
-                    }
-                }
-
-                if (found)
-                {
-                    // We found a free block!
-                    foundFreeLCN = i + bitmap.StartingLcn;
-                    break;
-                }
-            }
-
-            // Did we find a free area?
-            if (foundFreeLCN > 0)
-            {
-                Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", clustersNeeded, foundFreeLCN);
-
-                driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
-            }
-            else
-            {
-                Console.WriteLine("Unable to find {0:N0} contigous free clusters", clustersNeeded);
-            }
-
-            extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-            Console.WriteLine("File now has {0} fragment(s)", extents.Length);
-
-            Console.ReadLine();
-            Console.WriteLine();
-        }
-
-        private static void ExampleDefragmentDir()
-        {
-            const string dir = @"C:\Windows";
-            string drive = @"\\.\" + Directory.GetDirectoryRoot(dir).Substring(0, 2);
-
-            Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", dir, drive);
-
-            // Open volume to defragment on
-            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
-                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
-
-            if (driveHandle.IsInvalid)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-
-                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
-                Console.WriteLine();
-                return;
-            }
-
-            DeviceIOControlWrapper driveDeviceIo = new DeviceIOControlWrapper(driveHandle);
-
-            // Get the drive bitmap
-            VOLUME_BITMAP_BUFFER bitmap = driveDeviceIo.FileSystemGetVolumeBitmap();
-
-            Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
-
-            string[] files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
-            Console.WriteLine("Beginning work on {0} files", files.Length);
-
-            foreach (string file in files)
-            {
-                Console.WriteLine("Beginning work on {0}", file);
-
-                // Open file to defragment
-                SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
-                                                         FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
-
-                if (fileHandle.IsInvalid)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-
-                    Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
-                    continue;
-                }
-
-                DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
-
                 // Find all fragments of the file
-                FileExtentInfo[] extents;
-                try
-                {
-                    extents = fileDeviceIo.FileSystemGetRetrievalPointers();
-                }
-                catch (Win32Exception ex)
-                {
-                    Console.WriteLine("Couldn't get file extents: " + ex.Message);
-                    continue;
-                }
+                FileExtentInfo[] extents = fileIo.FileSystemGetRetrievalPointers();
+                Console.WriteLine("File has {0} fragments", extents.Length);
 
                 if (extents.Length == 1)
                 {
                     Console.WriteLine("File is already defragmented");
-                    continue;
+                    Console.WriteLine();
+                    return;
                 }
-                Console.WriteLine("File has {0} fragments", extents.Length);
 
                 // Calculate number of clusters we need to find
                 int clustersNeeded = (int)extents.Sum(s => (decimal)s.Size);
 
                 Console.WriteLine("We need to find {0:N0} free clusters, for this file.", clustersNeeded);
+
+                // Get the drive bitmap
+                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap();
+
+                Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
 
                 // Find a sequential area of [clustersNeeded] free clusters
                 ulong foundFreeLCN = 0;      // The result of the search
@@ -453,38 +333,163 @@ namespace DemoApplication
                 {
                     Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", clustersNeeded, foundFreeLCN);
 
-                    try
-                    {
-                        driveDeviceIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
-
-                        // Mark newly used areas as used
-                        ulong upperFreeLCN = foundFreeLCN + (ulong)clustersNeeded;
-                        for (ulong i = foundFreeLCN; i < upperFreeLCN; i++)
-                        {
-                            bitmap.Buffer[(int)i] = true;
-                        }
-
-                        // Mark newly freed areas as free
-                        foreach (FileExtentInfo extent in extents)
-                        {
-                            for (ulong i = extent.Lcn; i < extent.Lcn + extent.Size; i++)
-                            {
-                                bitmap.Buffer[(int)i] = false;
-                            }
-                        }
-                    }
-                    catch (Win32Exception ex)
-                    {
-                        Console.WriteLine("Unable to move file: " + ex.Message);
-                    }
+                    fsIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
                 }
                 else
                 {
                     Console.WriteLine("Unable to find {0:N0} contigous free clusters", clustersNeeded);
                 }
 
-                extents = fileDeviceIo.FileSystemGetRetrievalPointers();
+                extents = fileIo.FileSystemGetRetrievalPointers();
                 Console.WriteLine("File now has {0} fragment(s)", extents.Length);
+            }
+
+            Console.ReadLine();
+            Console.WriteLine();
+        }
+
+        private static void ExampleDefragmentDir()
+        {
+            const string dir = @"C:\Windows";
+            string drive = @"\\.\" + Directory.GetDirectoryRoot(dir).Substring(0, 2);
+
+            Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", dir, drive);
+
+            // Open volume to defragment on
+            SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
+                                                     FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (driveHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(driveHandle))
+            {
+                // Get the drive bitmap
+                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap();
+
+                Console.WriteLine("Got the drive bitmap, it contains {0:N0} clusters and starts at LCN: {1:N0}", bitmap.BitmapSize, bitmap.StartingLcn);
+
+                string[] files = Directory.GetFiles(dir, "*", SearchOption.TopDirectoryOnly);
+                Console.WriteLine("Beginning work on {0} files", files.Length);
+
+                foreach (string file in files)
+                {
+                    Console.WriteLine("Beginning work on {0}", file);
+
+                    // Open file to defragment
+                    SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
+                                                             FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+                    if (fileHandle.IsInvalid)
+                    {
+                        int lastError = Marshal.GetLastWin32Error();
+
+                        Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", file, lastError, new Win32Exception(lastError).Message);
+                        continue;
+                    }
+
+                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
+                    {
+                        // Find all fragments of the file
+                        FileExtentInfo[] extents;
+                        try
+                        {
+                            extents = fileIo.FileSystemGetRetrievalPointers();
+                        }
+                        catch (Win32Exception ex)
+                        {
+                            Console.WriteLine("Couldn't get file extents: " + ex.Message);
+                            continue;
+                        }
+
+                        if (extents.Length == 1)
+                        {
+                            Console.WriteLine("File is already defragmented");
+                            continue;
+                        }
+                        Console.WriteLine("File has {0} fragments", extents.Length);
+
+                        // Calculate number of clusters we need to find
+                        int clustersNeeded = (int)extents.Sum(s => (decimal)s.Size);
+
+                        Console.WriteLine("We need to find {0:N0} free clusters, for this file.", clustersNeeded);
+
+                        // Find a sequential area of [clustersNeeded] free clusters
+                        ulong foundFreeLCN = 0;      // The result of the search
+                        uint maxStart = (uint)(bitmap.Buffer.Length - (decimal)clustersNeeded); // There's no point searching beyond this LCN
+
+                        // Enumerate clusters
+                        for (uint i = 0; i < maxStart; i++)
+                        {
+                            // Check bitmap, find location with [clustersNeeded] free clusters
+                            bool found = true;
+                            for (uint x = i; x < i + clustersNeeded; x++)
+                            {
+                                if (bitmap.Buffer[(int)x])
+                                {
+                                    // Found an occupied cluster
+                                    found = false;
+
+                                    // Advance the pointer, so that we don't have to re-search the same clusters again.
+                                    i = x;
+
+                                    break;
+                                }
+                            }
+
+                            if (found)
+                            {
+                                // We found a free block!
+                                foundFreeLCN = i + bitmap.StartingLcn;
+                                break;
+                            }
+                        }
+
+                        // Did we find a free area?
+                        if (foundFreeLCN > 0)
+                        {
+                            Console.WriteLine("Found {0:N0} free clusters starting at LCN: {1:N0}", clustersNeeded, foundFreeLCN);
+
+                            try
+                            {
+                                fsIo.FileSystemMoveFile(fileHandle.DangerousGetHandle(), 0, foundFreeLCN, (uint)clustersNeeded);
+
+                                // Mark newly used areas as used
+                                ulong upperFreeLCN = foundFreeLCN + (ulong)clustersNeeded;
+                                for (ulong i = foundFreeLCN; i < upperFreeLCN; i++)
+                                {
+                                    bitmap.Buffer[(int)i] = true;
+                                }
+
+                                // Mark newly freed areas as free
+                                foreach (FileExtentInfo extent in extents)
+                                {
+                                    for (ulong i = extent.Lcn; i < extent.Lcn + extent.Size; i++)
+                                    {
+                                        bitmap.Buffer[(int)i] = false;
+                                    }
+                                }
+                            }
+                            catch (Win32Exception ex)
+                            {
+                                Console.WriteLine("Unable to move file: " + ex.Message);
+                            }
+                        }
+                        else
+                        {
+                            Console.WriteLine("Unable to find {0:N0} contigous free clusters", clustersNeeded);
+                        }
+
+                        extents = fileIo.FileSystemGetRetrievalPointers();
+                        Console.WriteLine("File now has {0} fragment(s)", extents.Length);
+                    }
+                }
             }
 
             Console.WriteLine("Done... ");
@@ -508,20 +513,21 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper cdTrayDeviceIo = new DeviceIOControlWrapper(cdTrayHandle);
+            using (StorageDeviceWrapper storageIo = new StorageDeviceWrapper(cdTrayHandle))
+            {
+                // Open tray
+                Console.WriteLine("Opening {0}", drive);
+                storageIo.StorageEjectMedia();
+                Console.WriteLine("Opened {0}", drive);
 
-            // Open tray
-            Console.WriteLine("Opening {0}", drive);
-            cdTrayDeviceIo.StorageEjectMedia();
-            Console.WriteLine("Opened {0}", drive);
+                Console.WriteLine(" .. (waiting 2 seconds)");
+                Thread.Sleep(TimeSpan.FromSeconds(2));
 
-            Console.WriteLine(" .. (waiting 2 seconds)");
-            Thread.Sleep(TimeSpan.FromSeconds(2));
-
-            // Close tray
-            Console.WriteLine("Closing {0}", drive);
-            cdTrayDeviceIo.StorageLoadMedia();
-            Console.WriteLine("Closed {0}", drive);
+                // Close tray
+                Console.WriteLine("Closing {0}", drive);
+                storageIo.StorageLoadMedia();
+                Console.WriteLine("Closed {0}", drive);
+            }
 
             Console.WriteLine();
         }
@@ -542,38 +548,39 @@ namespace DemoApplication
                 return;
             }
 
-            DeviceIOControlWrapper volumeDeviceIo = new DeviceIOControlWrapper(volumeHandle);
-
-            // Bitmap
-            VOLUME_BITMAP_BUFFER bitmap = volumeDeviceIo.FileSystemGetVolumeBitmap(0);
-
-            Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
-
-            int width = 10000;
-            int height = (int)Math.Ceiling(bitmap.BitmapSize / (double)width);
-
-            Console.WriteLine("W/H: {0:N0} / {1:N0}", width, height);
-
-            using (Bitmap bmp = new Bitmap(width, height))
+            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
             {
-                using (Graphics g = Graphics.FromImage(bmp))
-                    g.Clear(Color.Green);
+                // Bitmap
+                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap(0);
 
-                for (int i = 0; i < bitmap.Buffer.Length; i++)
+                Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
+
+                int width = 10000;
+                int height = (int)Math.Ceiling(bitmap.BitmapSize / (double)width);
+
+                Console.WriteLine("W/H: {0:N0} / {1:N0}", width, height);
+
+                using (Bitmap bmp = new Bitmap(width, height))
                 {
-                    int x = i % width;
-                    int y = i / width;
+                    using (Graphics g = Graphics.FromImage(bmp))
+                        g.Clear(Color.Green);
 
-                    if (bitmap.Buffer[i])
-                        bmp.SetPixel(x, y, Color.Black);
-                    else
-                        bmp.SetPixel(x, y, Color.White);
+                    for (int i = 0; i < bitmap.Buffer.Length; i++)
+                    {
+                        int x = i % width;
+                        int y = i / width;
 
-                    if (y % 100 == 0 && x == 0)
-                        Console.WriteLine("{0:N0} / {1:N0}", y, height);
+                        if (bitmap.Buffer[i])
+                            bmp.SetPixel(x, y, Color.Black);
+                        else
+                            bmp.SetPixel(x, y, Color.White);
+
+                        if (y % 100 == 0 && x == 0)
+                            Console.WriteLine("{0:N0} / {1:N0}", y, height);
+                    }
+
+                    bmp.Save("test.png", ImageFormat.Png);
                 }
-
-                bmp.Save("test.png", ImageFormat.Png);
             }
 
             Console.WriteLine();
@@ -608,32 +615,33 @@ namespace DemoApplication
                         return;
                     }
 
-                    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
-
-                    FileInfo fileInfo = new FileInfo(file);
-                    Console.WriteLine("File size: " + fileInfo.Length);
-                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
-
-                    // Enable sparse ranges
-                    Console.WriteLine("Enabling Sparse file");
-                    fileDeviceIo.FileSystemSetSparseFile(true);
-
-                    fileInfo.Refresh();
-                    Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
-
-                    // Set sparse range
-                    Console.WriteLine("  Setting sparse range: " + sparseLength + " (length: " + ((fileInfo.Length - sparseLength) / 2) + ")");
-                    fileDeviceIo.FileSystemSetZeroData(sparseLength, (fileInfo.Length - sparseLength) / 2);
-
-                    // Query sparse range
-                    fileInfo.Refresh();
-                    FILE_ALLOCATED_RANGE_BUFFER[] ranges = fileDeviceIo.FileSystemQueryAllocatedRanges(0, length);
-                    Console.WriteLine("File size: " + fileInfo.Length);
-
-                    Console.WriteLine("Sparse ranges (" + ranges.Length + "):");
-                    foreach (FILE_ALLOCATED_RANGE_BUFFER range in ranges)
+                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
                     {
-                        Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
+                        FileInfo fileInfo = new FileInfo(file);
+                        Console.WriteLine("File size: " + fileInfo.Length);
+                        Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                        // Enable sparse ranges
+                        Console.WriteLine("Enabling Sparse file");
+                        fileIo.FileSystemSetSparseFile(true);
+
+                        fileInfo.Refresh();
+                        Console.WriteLine("Sparse: " + fileInfo.Attributes.HasFlag(FileAttributes.SparseFile));
+
+                        // Set sparse range
+                        Console.WriteLine("  Setting sparse range: " + sparseLength + " (length: " + ((fileInfo.Length - sparseLength) / 2) + ")");
+                        fileIo.FileSystemSetZeroData(sparseLength, (fileInfo.Length - sparseLength) / 2);
+
+                        // Query sparse range
+                        fileInfo.Refresh();
+                        FILE_ALLOCATED_RANGE_BUFFER[] ranges = fileIo.FileSystemQueryAllocatedRanges(0, length);
+                        Console.WriteLine("File size: " + fileInfo.Length);
+
+                        Console.WriteLine("Sparse ranges (" + ranges.Length + "):");
+                        foreach (FILE_ALLOCATED_RANGE_BUFFER range in ranges)
+                        {
+                            Console.WriteLine("  Non-sparse range: " + range.FileOffset + " (length: " + range.Length + ")");
+                        }
                     }
                 }
             }
@@ -673,18 +681,19 @@ namespace DemoApplication
                         return;
                     }
 
-                    DeviceIOControlWrapper fileDeviceIo = new DeviceIOControlWrapper(fileHandle);
+                    using (FilesystemDeviceWrapper fileIo = new FilesystemDeviceWrapper(fileHandle))
+                    {
+                        FileInfo fileInfo = new FileInfo(file);
+                        Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                        Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
 
-                    FileInfo fileInfo = new FileInfo(file);
-                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
-                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileDeviceIo.FileSystemGetCompression());
+                        Console.WriteLine("  Enabling compression (LZNT1)");
+                        fileIo.FileSystemSetCompression(COMPRESSION_FORMAT.LZNT1);
 
-                    Console.WriteLine("  Enabling compression (LZNT1)");
-                    fileDeviceIo.FileSystemSetCompression(COMPRESSION_FORMAT.LZNT1);
-
-                    fileInfo.Refresh();
-                    Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
-                    Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileDeviceIo.FileSystemGetCompression());
+                        fileInfo.Refresh();
+                        Console.WriteLine("File size: {0:N0} (compressed: {1:N0})", fileInfo.Length, GetCompressedSize(file));
+                        Console.WriteLine("Compression: {0} ({1})", fileInfo.Attributes.HasFlag(FileAttributes.Compressed), fileIo.FileSystemGetCompression());
+                    }
                 }
             }
             finally

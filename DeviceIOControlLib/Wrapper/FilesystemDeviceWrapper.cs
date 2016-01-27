@@ -5,239 +5,19 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
-using DeviceIOControlLib.Objects.Volume;
 using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib.Wrapper
 {
-    public class DeviceIOControlWrapper : IDisposable
+    public class FilesystemDeviceWrapper : DeviceIoWrapperBase
     {
-        private readonly bool _ownsHandle;
-
-        public SafeFileHandle Handle { get; private set; }
-
-        public DeviceIOControlWrapper(SafeFileHandle handle, bool ownsHandle = false)
+        public FilesystemDeviceWrapper(SafeFileHandle handle, bool ownsHandle = false)
+            : base(handle, ownsHandle)
         {
-            if (handle.IsInvalid)
-                throw new ArgumentException("Handle is invalid");
-
-            _ownsHandle = ownsHandle;
-            Handle = handle;
         }
-
-        #region STORAGE
-
-        //StorageCheckVerify
-        //StorageCheckVerify2
-        //StorageMediaRemoval
-
-        /// <summary>
-        /// Used to f.ex. open/eject CD Rom trays
-        /// <see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363406(v=vs.85).aspx" />
-        /// </summary>
-        public bool StorageEjectMedia()
-        {
-            return DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.StorageEjectMedia);
-        }
-
-        /// <summary>
-        /// Used to f.ex. close CD Rom trays
-        /// <see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa363414(v=vs.85).aspx" />
-        /// </summary>
-        public bool StorageLoadMedia()
-        {
-            return DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.StorageLoadMedia);
-        }
-
-        //StorageLoadMedia2
-        //StorageReserve
-        //StorageRelease
-        //StorageFindNewDevices
-        //StorageEjectionControl
-        //StorageMcnControl
-        //StorageGetMediaTypes
-        //StorageGetMediaTypesEx
-        //StorageResetBus
-        //StorageResetDevice
-        //StorageGetDeviceNumber
-        //StoragePredictFailure
-        //StorageObsoleteResetBus
-        //StorageObsoleteResetDevice
-
-        #endregion
-
-        #region DISK
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365169(v=vs.85).aspx"/></summary>
-        public DISK_GEOMETRY DiskGetDriveGeometry()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<DISK_GEOMETRY>(Handle, IOControlCode.DiskGetDriveGeometry);
-        }
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365171(v=vs.85).aspx"/></summary>
-        public DISK_GEOMETRY_EX DiskGetDriveGeometryEx()
-        {
-            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.DiskGetDriveGeometryEx, 256);
-
-            DISK_GEOMETRY_EX res;
-
-            IntPtr dataPtr = IntPtr.Zero;
-            try
-            {
-                dataPtr = Marshal.AllocHGlobal(data.Length);
-                Marshal.Copy(data, 0, dataPtr, data.Length);
-
-                res.Geometry = (DISK_GEOMETRY)Marshal.PtrToStructure(dataPtr, typeof(DISK_GEOMETRY));
-                res.DiskSize = BitConverter.ToInt64(data, Marshal.SizeOf(typeof(DISK_GEOMETRY)));
-
-                IntPtr tmpPtr = dataPtr + Marshal.SizeOf(typeof(DISK_GEOMETRY)) + sizeof(long);
-                res.PartitionInformation = (DISK_PARTITION_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_PARTITION_INFO));
-
-                tmpPtr += res.PartitionInformation.SizeOfPartitionInfo;
-                res.DiskInt13Info = (DISK_EX_INT13_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_EX_INT13_INFO));
-            }
-            finally
-            {
-                if (dataPtr == IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
-            }
-
-            return res;
-        }
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365179(v=vs.85).aspx"/></summary>
-        public PARTITION_INFORMATION DiskGetPartitionInfo()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<PARTITION_INFORMATION>(Handle, IOControlCode.DiskGetPartitionInfo);
-        }
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365180(v=vs.85).aspx"/></summary>
-        public PARTITION_INFORMATION_EX DiskGetPartitionInfoEx()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<PARTITION_INFORMATION_EX>(Handle, IOControlCode.DiskGetPartitionInfoEx);
-        }
-
-        //DiskSetPartitionInfo
-        //DiskSetPartitionInfoEx
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365173(v=vs.85).aspx"/></summary>
-        public DRIVE_LAYOUT_INFORMATION DiskGetDriveLayout()
-        {
-            DRIVE_LAYOUT_INFORMATION_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayout);
-
-            DRIVE_LAYOUT_INFORMATION res = new DRIVE_LAYOUT_INFORMATION();
-
-            res.PartitionCount = data.PartitionCount;
-            res.Signature = data.Signature;
-            res.PartitionEntry = new PARTITION_INFORMATION[res.PartitionCount];
-
-            for (int i = 0; i < res.PartitionCount; i++)
-                res.PartitionEntry[i] = data.PartitionEntry[i];
-
-            return res;
-        }
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365174(v=vs.85).aspx"/></summary>
-        public DRIVE_LAYOUT_INFORMATION_EX DiskGetDriveLayoutEx()
-        {
-            DRIVE_LAYOUT_INFORMATION_EX_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_EX_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayoutEx);
-
-            DRIVE_LAYOUT_INFORMATION_EX res = new DRIVE_LAYOUT_INFORMATION_EX();
-
-            res.PartitionStyle = data.PartitionStyle;
-            res.PartitionCount = data.PartitionCount;
-            res.DriveLayoutInformaiton = data.DriveLayoutInformaiton;
-            res.PartitionEntry = new PARTITION_INFORMATION_EX[res.PartitionCount];
-
-            for (int i = 0; i < res.PartitionCount; i++)
-                res.PartitionEntry[i] = data.PartitionEntry[i];
-
-            return res;
-        }
-
-        //DiskSetDriveLayout
-        //DiskSetDriveLayoutEx
-        //DiskVerify
-        //DiskFormatTracks
-        //DiskReassignBlocks
-        //DiskPerformance
-        //DiskIsWritable
-        //DiskLogging
-        //DiskFormatTracksEx
-        //DiskHistogramStructure
-        //DiskHistogramData
-        //DiskHistogramReset
-        //DiskRequestStructure
-        //DiskRequestData
-        //DiskControllerNumber
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/hardware/ff566202(v=vs.85).aspx"/></summary>
-        public GETVERSIONINPARAMS DiskGetSmartVersion()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<GETVERSIONINPARAMS>(Handle, IOControlCode.DiskSmartGetVersion);
-        }
-
-        //DiskSmartSendDriveCommand
-        //DiskSmartRcvDriveData
-        //DiskUpdateDriveSize
-        //DiskGrowPartition
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365165(v=vs.85).aspx"/></summary>
-        public DISK_CACHE_INFORMATION DiskGetCacheInformation()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<DISK_CACHE_INFORMATION>(Handle, IOControlCode.DiskGetCacheInformation);
-        }
-
-        //DiskSetCacheInformation
-        //DiskDeleteDriveLayout
-        //DiskFormatDrive
-        //DiskSenseDevice
-        //DiskCheckVerify
-        //DiskMediaRemoval
-        //DiskEjectMedia
-        //DiskLoadMedia
-        //DiskReserve
-        //DiskRelease
-        //DiskFindNewDevices
-        //DiskCreateDisk
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365178(v=vs.85).aspx"/></summary>
-        public long DiskGetLengthInfo()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<GET_LENGTH_INFORMATION>(Handle, IOControlCode.DiskGetLengthInfo).Length;
-        }
-
-        /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/hh706681(v=vs.85).aspx"/></summary>
-        public GET_DISK_ATTRIBUTES DiskGetDiskAttributes()
-        {
-            return DeviceIoControlHelper.InvokeIoControl<GET_DISK_ATTRIBUTES>(Handle, IOControlCode.DiskGetDiskAttributes);
-        }
-
-        //DiskSetDiskAttributes
-
-        #endregion
-
-        #region CHANGER
-
-        //ChangerGetParameters
-        //ChangerGetStatus
-        //ChangerGetProductData
-        //ChangerSetAccess
-        //ChangerGetElementStatus
-        //ChangerInitializeElementStatus
-        //ChangerSetPosition
-        //ChangerExchangeMedium
-        //ChangerMoveMedium
-        //ChangerReinitializeTarget
-        //ChangerQueryVolumeTags
-
-        #endregion
-
-        #region FILESYSTEM
 
         //FsctlAllowExtendedDasdIo
         //FsctlCreateOrGetObjectId
@@ -410,7 +190,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364567(v=vs.85).aspx"/></summary>
         public COMPRESSION_FORMAT FileSystemGetCompression()
         {
-            return (COMPRESSION_FORMAT) DeviceIoControlHelper.InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
+            return (COMPRESSION_FORMAT)DeviceIoControlHelper.InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
         }
 
         //FsctlGetHfsInformation
@@ -494,8 +274,8 @@ namespace DeviceIOControlLib.Wrapper
                     for (ulong i = 0; i < output.ExtentCount; i++)
                     {
                         ulong startVcn = i == 0
-                                         ? output.StartingVcn
-                                         : output.Extents[i - 1].NextVcn;
+                            ? output.StartingVcn
+                            : output.Extents[i - 1].NextVcn;
 
                         ulong size = output.Extents[i].NextVcn - startVcn;
 
@@ -684,69 +464,5 @@ namespace DeviceIOControlLib.Wrapper
         //FsctlWritePropertyData
         //FsctlWriteRawEncrypted
         //FsctlWriteUsnCloseRecord
-
-        #endregion
-
-        #region VIDEO
-
-        //VideoQuerySupportedBrightness
-        //VideoQueryDisplayBrightness
-        //VideoSetDisplayBrightness
-
-        #endregion
-
-        #region VOLUME
-
-        /// <summary>
-        /// <see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365194(v=vs.85).aspx" />
-        /// </summary>
-        public VOLUME_DISK_EXTENTS VolumeGetVolumeDiskExtents()
-        {
-            // Fetch in increments of 32 bytes, as one extent (the most common case) is one extent pr. volume.
-            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.VolumeGetVolumeDiskExtents, 32);
-
-            // Build the VOLUME_DISK_EXTENTS structure
-            VOLUME_DISK_EXTENTS res = new VOLUME_DISK_EXTENTS();
-
-            res.NumberOfDiskExtents = BitConverter.ToUInt32(data, 0);
-            res.Extents = new DISK_EXTENT[res.NumberOfDiskExtents];
-
-            IntPtr dataPtr = IntPtr.Zero;
-            try
-            {
-                dataPtr = Marshal.AllocHGlobal(data.Length);
-                Marshal.Copy(data, 0, dataPtr, data.Length);
-
-                // TODO: This code needs to be tested for disks with more than one extent.
-                for (int i = 0; i < res.NumberOfDiskExtents; i++)
-                {
-                    IntPtr currentDataPtr = dataPtr + 8 + i * Marshal.SizeOf(typeof(DISK_EXTENT));
-                    DISK_EXTENT extent = (DISK_EXTENT)Marshal.PtrToStructure(currentDataPtr, typeof(DISK_EXTENT));
-
-                    res.Extents[i] = extent;
-                }
-            }
-            finally
-            {
-                if (dataPtr != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
-            }
-
-            return res;
-        }
-
-        #endregion
-
-        public void Close()
-        {
-            if (Handle != null && !Handle.IsClosed)
-                Handle.Close();
-        }
-
-        public void Dispose()
-        {
-            if (_ownsHandle)
-                Close();
-        }
     }
 }
