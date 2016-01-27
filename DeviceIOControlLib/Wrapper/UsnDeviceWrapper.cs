@@ -44,6 +44,42 @@ namespace DeviceIOControlLib.Wrapper
             return FileSystemReadUsnJournal(usnQuery.UsnJournalID, reasonMask, firstUsn, bytesToWaitFor, timeout);
         }
 
+        private static IUSN_RECORD ParseUsnRecord(UnmanagedMemory mem, int dataOffset, out int length)
+        {
+            // Get record length
+            length = Marshal.ReadInt32(mem, dataOffset);
+            int majorVersion = Marshal.ReadByte(mem, dataOffset + sizeof(int)) + (Marshal.ReadByte(mem, dataOffset + sizeof(int) + 1) << 8);
+
+            if (length <= 0)
+                // No more records
+                return null;
+
+            // Copy out record subset
+            switch (majorVersion)
+            {
+                case 2:
+                    USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V2));
+
+                    // Parse string manually, as we cannot rely on the string to be null-terminated.
+                    recordv2.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv2.FileNameOffset, recordv2.FileNameLength / 2);
+
+                    return recordv2;
+                case 3:
+                    USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V3));
+
+                    // Parse string manually, as we cannot rely on the string to be null-terminated.
+                    recordv3.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv3.FileNameOffset, recordv3.FileNameLength / 2);
+
+                    return recordv3;
+                default:
+                    // Ignore
+                    Debugger.Break();
+                    break;
+            }
+
+            return null;
+        }
+
         /// <summary><see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa364586(v=vs.85).aspx"/></summary>
         public IUSN_RECORD[] FileSystemReadUsnJournal(long volumeJournalId, UsnJournalReasonMask reasonMask, USN firstUsn, int bytesToWaitFor = 0, int timeout = 0)
         {
@@ -65,41 +101,14 @@ namespace DeviceIOControlLib.Wrapper
 
                 while (dataOffset < data.Length)
                 {
-                    // Get record length
-                    int length = Marshal.ReadInt32(mem, dataOffset);
-                    int majorVersion = Marshal.ReadByte(mem, dataOffset + sizeof(int)) + (Marshal.ReadByte(mem, dataOffset + sizeof(int) + 1) << 8);
+                    int length;
+                    IUSN_RECORD rec = ParseUsnRecord(mem, dataOffset, out length);
 
                     if (length <= 0)
-                        // No more records
                         break;
 
-                    // Copy out record subset
-                    switch (majorVersion)
-                    {
-                        case 2:
-                            USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V2));
-
-                            // Parse string manually, as we cannot rely on the string to be null-terminated.
-                            recordv2.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv2.FileNameOffset, recordv2.FileNameLength / 2);
-
-                            res.Add(recordv2);
-
-                            break;
-                        case 3:
-                            USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V3));
-
-                            // Parse string manually, as we cannot rely on the string to be null-terminated.
-                            recordv3.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv3.FileNameOffset, recordv3.FileNameLength / 2);
-
-                            res.Add(recordv3);
-
-                            break;
-                        default:
-                            // Ignore
-                            Debugger.Break();
-                            break;
-                    }
-
+                    res.Add(rec);
+                    
                     // Move to next record
                     dataOffset += length;
                 }
@@ -139,40 +148,13 @@ namespace DeviceIOControlLib.Wrapper
 
                     while (dataOffset < data.Length)
                     {
-                        // Get record length
-                        int length = Marshal.ReadInt32(mem, dataOffset);
-                        int majorVersion = Marshal.ReadByte(mem, dataOffset + sizeof(int)) + (Marshal.ReadByte(mem, dataOffset + sizeof(int) + 1) << 8);
+                        int length;
+                        IUSN_RECORD rec = ParseUsnRecord(mem, dataOffset, out length);
 
                         if (length <= 0)
-                            // No more records
                             break;
 
-                        // Copy out record subset
-                        switch (majorVersion)
-                        {
-                            case 2:
-                                USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V2));
-
-                                // Parse string manually, as we cannot rely on the string to be null-terminated.
-                                recordv2.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv2.FileNameOffset, recordv2.FileNameLength / 2);
-
-                                res.Add(recordv2);
-
-                                break;
-                            case 3:
-                                USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V3));
-
-                                // Parse string manually, as we cannot rely on the string to be null-terminated.
-                                recordv3.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv3.FileNameOffset, recordv3.FileNameLength / 2);
-
-                                res.Add(recordv3);
-
-                                break;
-                            default:
-                                // Ignore
-                                Debugger.Break();
-                                break;
-                        }
+                        res.Add(rec);
 
                         // Move to next record
                         dataOffset += length;
@@ -191,11 +173,6 @@ namespace DeviceIOControlLib.Wrapper
             USN_JOURNAL_DATA_V0 res = DeviceIoControlHelper.InvokeIoControl<USN_JOURNAL_DATA_V0>(Handle, IOControlCode.FsctlQueryUsnJournal);
 
             return res;
-        }
-
-        public object FileSystemReadUsnJournal()
-        {
-            throw new NotImplementedException();
         }
     }
 }
