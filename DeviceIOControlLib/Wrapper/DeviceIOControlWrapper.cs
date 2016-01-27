@@ -18,31 +18,6 @@ namespace DeviceIOControlLib.Wrapper
     {
         private readonly bool _ownsHandle;
 
-        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        private static extern bool DeviceIoControl(
-            SafeFileHandle hDevice,
-            IOControlCode IoControlCode,
-            [MarshalAs(UnmanagedType.AsAny)]
-            [In] object InBuffer,
-            uint nInBufferSize,
-            [MarshalAs(UnmanagedType.AsAny)]
-            [Out] object OutBuffer,
-            uint nOutBufferSize,
-            ref uint pBytesReturned,
-            [In] IntPtr Overlapped
-            );
-        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
-        private static extern bool DeviceIoControl(
-            SafeFileHandle hDevice,
-            IOControlCode ioControlCode,
-            byte[] inBuffer,
-            uint nInBufferSize,
-            byte[] outBuffer,
-            uint nOutBufferSize,
-            ref uint pBytesReturned,
-            IntPtr overlapped
-            );
-
         public SafeFileHandle Handle { get; private set; }
 
         public DeviceIOControlWrapper(SafeFileHandle handle, bool ownsHandle = false)
@@ -66,7 +41,7 @@ namespace DeviceIOControlLib.Wrapper
         /// </summary>
         public bool StorageEjectMedia()
         {
-            return InvokeIoControl(Handle, IOControlCode.StorageEjectMedia);
+            return DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.StorageEjectMedia);
         }
 
         /// <summary>
@@ -75,7 +50,7 @@ namespace DeviceIOControlLib.Wrapper
         /// </summary>
         public bool StorageLoadMedia()
         {
-            return InvokeIoControl(Handle, IOControlCode.StorageLoadMedia);
+            return DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.StorageLoadMedia);
         }
 
         //StorageLoadMedia2
@@ -100,13 +75,13 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365169(v=vs.85).aspx"/></summary>
         public DISK_GEOMETRY DiskGetDriveGeometry()
         {
-            return InvokeIoControl<DISK_GEOMETRY>(Handle, IOControlCode.DiskGetDriveGeometry);
+            return DeviceIoControlHelper.InvokeIoControl<DISK_GEOMETRY>(Handle, IOControlCode.DiskGetDriveGeometry);
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365171(v=vs.85).aspx"/></summary>
         public DISK_GEOMETRY_EX DiskGetDriveGeometryEx()
         {
-            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.DiskGetDriveGeometryEx, 256);
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.DiskGetDriveGeometryEx, 256);
 
             DISK_GEOMETRY_EX res;
 
@@ -137,13 +112,13 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365179(v=vs.85).aspx"/></summary>
         public PARTITION_INFORMATION DiskGetPartitionInfo()
         {
-            return InvokeIoControl<PARTITION_INFORMATION>(Handle, IOControlCode.DiskGetPartitionInfo);
+            return DeviceIoControlHelper.InvokeIoControl<PARTITION_INFORMATION>(Handle, IOControlCode.DiskGetPartitionInfo);
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365180(v=vs.85).aspx"/></summary>
         public PARTITION_INFORMATION_EX DiskGetPartitionInfoEx()
         {
-            return InvokeIoControl<PARTITION_INFORMATION_EX>(Handle, IOControlCode.DiskGetPartitionInfoEx);
+            return DeviceIoControlHelper.InvokeIoControl<PARTITION_INFORMATION_EX>(Handle, IOControlCode.DiskGetPartitionInfoEx);
         }
 
         //DiskSetPartitionInfo
@@ -152,7 +127,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365173(v=vs.85).aspx"/></summary>
         public DRIVE_LAYOUT_INFORMATION DiskGetDriveLayout()
         {
-            DRIVE_LAYOUT_INFORMATION_INTERNAL data = InvokeIoControl<DRIVE_LAYOUT_INFORMATION_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayout);
+            DRIVE_LAYOUT_INFORMATION_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayout);
 
             DRIVE_LAYOUT_INFORMATION res = new DRIVE_LAYOUT_INFORMATION();
 
@@ -169,7 +144,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365174(v=vs.85).aspx"/></summary>
         public DRIVE_LAYOUT_INFORMATION_EX DiskGetDriveLayoutEx()
         {
-            DRIVE_LAYOUT_INFORMATION_EX_INTERNAL data = InvokeIoControl<DRIVE_LAYOUT_INFORMATION_EX_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayoutEx);
+            DRIVE_LAYOUT_INFORMATION_EX_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_EX_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayoutEx);
 
             DRIVE_LAYOUT_INFORMATION_EX res = new DRIVE_LAYOUT_INFORMATION_EX();
 
@@ -203,7 +178,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/hardware/ff566202(v=vs.85).aspx"/></summary>
         public GETVERSIONINPARAMS DiskGetSmartVersion()
         {
-            return InvokeIoControl<GETVERSIONINPARAMS>(Handle, IOControlCode.DiskSmartGetVersion);
+            return DeviceIoControlHelper.InvokeIoControl<GETVERSIONINPARAMS>(Handle, IOControlCode.DiskSmartGetVersion);
         }
 
         //DiskSmartSendDriveCommand
@@ -214,7 +189,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365165(v=vs.85).aspx"/></summary>
         public DISK_CACHE_INFORMATION DiskGetCacheInformation()
         {
-            return InvokeIoControl<DISK_CACHE_INFORMATION>(Handle, IOControlCode.DiskGetCacheInformation);
+            return DeviceIoControlHelper.InvokeIoControl<DISK_CACHE_INFORMATION>(Handle, IOControlCode.DiskGetCacheInformation);
         }
 
         //DiskSetCacheInformation
@@ -233,13 +208,13 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365178(v=vs.85).aspx"/></summary>
         public long DiskGetLengthInfo()
         {
-            return InvokeIoControl<GET_LENGTH_INFORMATION>(Handle, IOControlCode.DiskGetLengthInfo).Length;
+            return DeviceIoControlHelper.InvokeIoControl<GET_LENGTH_INFORMATION>(Handle, IOControlCode.DiskGetLengthInfo).Length;
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/hh706681(v=vs.85).aspx"/></summary>
         public GET_DISK_ATTRIBUTES DiskGetDiskAttributes()
         {
-            return InvokeIoControl<GET_DISK_ATTRIBUTES>(Handle, IOControlCode.DiskGetDiskAttributes);
+            return DeviceIoControlHelper.InvokeIoControl<GET_DISK_ATTRIBUTES>(Handle, IOControlCode.DiskGetDiskAttributes);
         }
 
         //DiskSetDiskAttributes
@@ -297,7 +272,7 @@ namespace DeviceIOControlLib.Wrapper
                     input.HighUsn = long.MaxValue;
 
                     int errorCode;
-                    byte[] data = InvokeIoControl(Handle, IOControlCode.FsctlEnumUsnData, chunkSize, input, out errorCode);
+                    byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlEnumUsnData, chunkSize, input, out errorCode);
 
                     if (errorCode != 0)
                         // Exit when theres no more to do
@@ -370,7 +345,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364565(v=vs.85).aspx"/></summary>
         public FileSystemStats[] FileSystemGetStatistics()
         {
-            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlFileSystemGetStatistics, 512);
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlFileSystemGetStatistics, 512);
             IntPtr dataPtr = IntPtr.Zero;
 
             FileSystemStats[] res;
@@ -435,7 +410,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364567(v=vs.85).aspx"/></summary>
         public COMPRESSION_FORMAT FileSystemGetCompression()
         {
-            return (COMPRESSION_FORMAT)InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
+            return (COMPRESSION_FORMAT) DeviceIoControlHelper.InvokeIoControl<ushort>(Handle, IOControlCode.FsctlGetCompression);
         }
 
         //FsctlGetHfsInformation
@@ -446,7 +421,7 @@ namespace DeviceIOControlLib.Wrapper
             NTFS_FILE_RECORD_INPUT_BUFFER input = new NTFS_FILE_RECORD_INPUT_BUFFER();
             input.FileReferenceNumber = fileId;
 
-            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlGetNtfsFileRecord, input, 1024);    // NTFS File records are in 1K chunks
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlGetNtfsFileRecord, input, 1024);    // NTFS File records are in 1K chunks
 
             NTFS_FILE_RECORD_OUTPUT_BUFFER res = new NTFS_FILE_RECORD_OUTPUT_BUFFER();
             res.FileReferenceNumber = BitConverter.ToUInt64(data, 0);
@@ -461,7 +436,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364569(v=vs.85).aspx"/></summary>
         public NTFS_VOLUME_DATA_BUFFER FileSystemGetNtfsVolumeData()
         {
-            return InvokeIoControl<NTFS_VOLUME_DATA_BUFFER>(Handle, IOControlCode.FsctlGetNtfsVolumeData);
+            return DeviceIoControlHelper.InvokeIoControl<NTFS_VOLUME_DATA_BUFFER>(Handle, IOControlCode.FsctlGetNtfsVolumeData);
         }
 
         //FsctlGetObjectId
@@ -470,7 +445,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/dd405526(v=vs.85).aspx"/></summary>
         public RETRIEVAL_POINTER_BASE FileSystemGetRetrievalPointerBase()
         {
-            return InvokeIoControl<RETRIEVAL_POINTER_BASE>(Handle, IOControlCode.FsctlGetRetrievalPointerBase);
+            return DeviceIoControlHelper.InvokeIoControl<RETRIEVAL_POINTER_BASE>(Handle, IOControlCode.FsctlGetRetrievalPointerBase);
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/dd405526(v=vs.85).aspx"/></summary>
@@ -495,7 +470,7 @@ namespace DeviceIOControlLib.Wrapper
             {
                 do
                 {
-                    byte[] data = InvokeIoControl(Handle, IOControlCode.FsctlGetRetrievalPointers, chunkSize, input, out lastError);
+                    byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlGetRetrievalPointers, chunkSize, input, out lastError);
 
                     RETRIEVAL_POINTERS_BUFFER output = new RETRIEVAL_POINTERS_BUFFER();
                     output.ExtentCount = BitConverter.ToUInt32(data, 0);
@@ -557,7 +532,7 @@ namespace DeviceIOControlLib.Wrapper
 
             // Fetch 128 bytes (this includes the size parameter of the VOLUME_BITMAP_BUFFER structure.
             int lastError;
-            byte[] data = InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, 128, startingLcnStruct, out lastError);
+            byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, 128, startingLcnStruct, out lastError);
 
             // Is there more data? (Most often there is).
             if (lastError == 234)
@@ -568,7 +543,7 @@ namespace DeviceIOControlLib.Wrapper
                 // Length: Clusters / 8 + 2x 64 bit numbers
                 newLength = (uint)Math.Ceiling(newLength / 8d) + 2 * 8;
 
-                data = InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, newLength, startingLcnStruct, out lastError);
+                data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlGetVolumeBitmap, newLength, startingLcnStruct, out lastError);
             }
 
             // Ensure the last call to InvokeIoControl succeeded.
@@ -616,7 +591,7 @@ namespace DeviceIOControlLib.Wrapper
             input.StartingLcn = startingLcn;
             input.ClusterCount = clusterCount;
 
-            InvokeIoControl(Handle, IOControlCode.FsctlMoveFile, input);
+            DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlMoveFile, input);
         }
 
         //FsctlNssControl
@@ -633,7 +608,7 @@ namespace DeviceIOControlLib.Wrapper
             input.FileOffset = offset;
             input.Length = offset + length;
 
-            byte[] res = InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlQueryAllocatedRanges, input, 512);
+            byte[] res = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlQueryAllocatedRanges, input, 512);
 
             int singleSize = Marshal.SizeOf(typeof(FILE_ALLOCATED_RANGE_BUFFER));
             List<FILE_ALLOCATED_RANGE_BUFFER> ranges = new List<FILE_ALLOCATED_RANGE_BUFFER>();
@@ -653,11 +628,11 @@ namespace DeviceIOControlLib.Wrapper
         //FsctlQueryFatBpb
         //FsctlQueryRetrievalPointers
         //FsctlQueryOnDiskVolumeInfo
-        
+
         /// <summary><see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa364583(v=vs.85).aspx"/></summary>
         public USN_JOURNAL_DATA_V0 FileSystemQueryUsnJournal()
         {
-            USN_JOURNAL_DATA_V0 res = InvokeIoControl<USN_JOURNAL_DATA_V0>(Handle, IOControlCode.FsctlQueryUsnJournal);
+            USN_JOURNAL_DATA_V0 res = DeviceIoControlHelper.InvokeIoControl<USN_JOURNAL_DATA_V0>(Handle, IOControlCode.FsctlQueryUsnJournal);
 
             return res;
         }
@@ -676,7 +651,7 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364592(v=vs.85).aspx"/></summary>
         public void FileSystemSetCompression(COMPRESSION_FORMAT level)
         {
-            InvokeIoControl(Handle, IOControlCode.FsctlSetCompression, (ushort)level);
+            DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlSetCompression, (ushort)level);
         }
 
         //FsctlSetEncryption
@@ -690,7 +665,7 @@ namespace DeviceIOControlLib.Wrapper
             FILE_SET_SPARSE_BUFFER input = new FILE_SET_SPARSE_BUFFER();
             input.SetSparse = setSparse;
 
-            InvokeIoControl(Handle, IOControlCode.FsctlSetSparse, input);
+            DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlSetSparse, input);
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa364597(v=vs.85).aspx"/></summary>
@@ -700,7 +675,7 @@ namespace DeviceIOControlLib.Wrapper
             input.FileOffset = fileOffset;
             input.BeyondFinalZero = fileOffset + length;
 
-            InvokeIoControl(Handle, IOControlCode.FsctlSetZeroData, input);
+            DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlSetZeroData, input);
         }
 
         //FsctlSisCopyFile
@@ -728,7 +703,7 @@ namespace DeviceIOControlLib.Wrapper
         public VOLUME_DISK_EXTENTS VolumeGetVolumeDiskExtents()
         {
             // Fetch in increments of 32 bytes, as one extent (the most common case) is one extent pr. volume.
-            byte[] data = InvokeIoControlUnknownSize(Handle, IOControlCode.VolumeGetVolumeDiskExtents, 32);
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.VolumeGetVolumeDiskExtents, 32);
 
             // Build the VOLUME_DISK_EXTENTS structure
             VOLUME_DISK_EXTENTS res = new VOLUME_DISK_EXTENTS();
@@ -761,212 +736,6 @@ namespace DeviceIOControlLib.Wrapper
         }
 
         #endregion
-
-        /// <summary>
-        /// Invoke DeviceIOControl with no input or output.
-        /// </summary>
-        /// <returns>Success</returns>
-        public static bool InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode)
-        {
-            uint returnedBytes = 0;
-
-            return DeviceIoControl(handle, controlCode, null, 0, null, 0, ref returnedBytes, IntPtr.Zero);
-        }
-
-        /// <summary>
-        /// Invoke DeviceIOControl with no input, and retrieve the output in the form of a byte array.
-        /// </summary>
-        private static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength)
-        {
-            uint returnedBytes = 0;
-
-            byte[] output = new byte[outputLength];
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-            if (!success)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-            }
-
-            return output;
-        }
-
-        /// <summary>
-        /// Invoke DeviceIOControl with no input, and retrieve the output in the form of a byte array. Lets the caller handle the errorcode (if any).
-        /// </summary>
-        private static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, out int errorCode)
-        {
-            uint returnedBytes = 0;
-
-            byte[] output = new byte[outputLength];
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-            errorCode = 0;
-
-            if (!success)
-                errorCode = Marshal.GetLastWin32Error();
-
-            return output;
-        }
-
-        /// <summary>
-        /// Invoke DeviceIOControl with no input, and retrieve the output in the form of an object of type T.
-        /// </summary>
-        private static T InvokeIoControl<T>(SafeFileHandle handle, IOControlCode controlCode)
-        {
-            uint returnedBytes = 0;
-
-            object output = default(T);
-            uint outputSize = (uint)Marshal.SizeOf(output);
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputSize, ref returnedBytes, IntPtr.Zero);
-
-            if (!success)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-            }
-
-            return (T)output;
-        }
-
-        /// <summary>
-        /// Invoke DeviceIOControl with input of type V, and retrieve the output in the form of an object of type T.
-        /// </summary>
-        private static T InvokeIoControl<T, V>(SafeFileHandle handle, IOControlCode controlCode, V input)
-        {
-            uint returnedBytes = 0;
-
-            object output = default(T);
-            uint outputSize = (uint)Marshal.SizeOf(output);
-
-            uint inputSize = (uint)Marshal.SizeOf(input);
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputSize, ref returnedBytes, IntPtr.Zero);
-
-            if (!success)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-            }
-
-            return (T)output;
-        }
-
-        /// <summary>
-        /// Invoke DeviceIOControl with input of type V, and retrieves no output.
-        /// </summary>
-        private static void InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
-        {
-            uint returnedBytes = 0;
-
-            uint inputSize = (uint)Marshal.SizeOf(input);
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, null, 0, ref returnedBytes, IntPtr.Zero);
-
-            if (!success)
-            {
-                int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-            }
-        }
-
-        /// <summary>
-        /// Calls InvokeIoControl with the specified input, returning a byte array. It allows the caller to handle errors.
-        /// </summary>
-        private static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
-        {
-            uint returnedBytes = 0;
-            uint inputSize = (uint)Marshal.SizeOf(input);
-
-            errorCode = 0;
-            byte[] output = new byte[outputLength];
-
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-            if (!success)
-            {
-                errorCode = Marshal.GetLastWin32Error();
-            }
-
-            return output;
-        }
-        /// <summary>
-        /// Repeatedly invokes InvokeIoControl, as long as it gets return code 234 ("More data available") from the method.
-        /// </summary>
-        private static byte[] InvokeIoControlUnknownSize(SafeFileHandle handle, IOControlCode controlCode, uint increment = 128)
-        {
-            uint returnedBytes = 0;
-
-            uint outputLength = increment;
-
-            do
-            {
-                byte[] output = new byte[outputLength];
-                bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-                if (!success)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-
-                    if (lastError == 234)
-                    {
-                        // More data
-                        outputLength += increment;
-                        continue;
-                    }
-
-                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-                }
-
-                // Return the result
-                if (output.Length == returnedBytes)
-                    return output;
-
-                byte[] res = new byte[returnedBytes];
-                Array.Copy(output, res, returnedBytes);
-
-                return res;
-            } while (true);
-        }
-
-        /// <summary>
-        /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
-        /// </summary>
-        private static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128)
-        {
-            uint returnedBytes = 0;
-
-            uint inputSize = (uint)Marshal.SizeOf(input);
-            uint outputLength = increment;
-
-            do
-            {
-                byte[] output = new byte[outputLength];
-                bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
-
-                if (!success)
-                {
-                    int lastError = Marshal.GetLastWin32Error();
-
-                    if (lastError == 234)
-                    {
-                        // More data
-                        outputLength += increment;
-                        continue;
-                    }
-
-                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
-                }
-
-                // Return the result
-                if (output.Length == returnedBytes)
-                    return output;
-
-                byte[] res = new byte[returnedBytes];
-                Array.Copy(output, res, returnedBytes);
-
-                return res;
-            } while (true);
-        }
 
         public void Close()
         {
