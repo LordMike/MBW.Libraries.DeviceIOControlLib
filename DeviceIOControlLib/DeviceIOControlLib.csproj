@@ -112,6 +112,7 @@
     <Compile Include="Wrapper\StorageDeviceWrapper.cs" />
     <Compile Include="Wrapper\UsnDeviceWrapper.cs" />
     <Compile Include="Wrapper\VolumeDeviceWrapper.cs" />
+    <Compile Include="Utilities\WaitHandleExtensions.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

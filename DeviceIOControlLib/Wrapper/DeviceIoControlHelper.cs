@@ -1,7 +1,13 @@
 using System;
+using System.CodeDom;
 using System.ComponentModel;
+using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using DeviceIOControlLib.Objects.Enums;
+using DeviceIOControlLib.Objects.FileSystem;
 using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
@@ -22,6 +28,7 @@ namespace DeviceIOControlLib.Wrapper
             ref uint pBytesReturned,
             [In] IntPtr Overlapped
             );
+
         [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
         private static extern bool DeviceIoControl(
             SafeFileHandle hDevice,
@@ -33,6 +40,62 @@ namespace DeviceIOControlLib.Wrapper
             ref uint pBytesReturned,
             IntPtr overlapped
             );
+
+        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        private static extern bool DeviceIoControl(
+            SafeFileHandle hDevice,
+            IOControlCode IoControlCode,
+            [MarshalAs(UnmanagedType.AsAny)]
+            [In] object InBuffer,
+            uint nInBufferSize,
+            [MarshalAs(UnmanagedType.AsAny)]
+            [Out] object OutBuffer,
+            uint nOutBufferSize,
+            ref uint pBytesReturned,
+            ref NativeOverlapped Overlapped
+            );
+
+        public static Task<byte[]> InvokeIoControlAsync<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
+        {
+            return InvokeIoControlAsync(handle, controlCode, outputLength, input, out errorCode, CancellationToken.None);
+        }
+
+        public static Task<byte[]> InvokeIoControlAsync<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode, CancellationToken cancellationToken)
+        {
+            uint returnedBytes = 0;
+            uint inputSize = (uint)Marshal.SizeOf(input);
+
+            ManualResetEvent stateChangeEvent = new ManualResetEvent(false);
+            NativeOverlapped nativeOverlapped = new NativeOverlapped();
+            nativeOverlapped.EventHandle = stateChangeEvent.SafeWaitHandle.DangerousGetHandle();
+
+            errorCode = 0;
+            byte[] output = new byte[outputLength];
+
+            Stopwatch swData = Stopwatch.StartNew();
+            Stopwatch swBegin = Stopwatch.StartNew();
+
+            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, ref nativeOverlapped);
+
+            if (!success)
+                Debugger.Break();
+
+            swBegin.Stop();
+
+            Task tsk = stateChangeEvent.AsTask(cancellationToken);
+
+            Task<byte[]> secTsk = tsk.ContinueWith(_ =>
+            {
+                swData.Stop();
+
+                Console.WriteLine(swData.Elapsed);
+                Console.WriteLine(swBegin.Elapsed);
+
+                return output;
+            });
+
+            return secTsk;
+        }
 
         /// <summary>
         /// Invoke DeviceIOControl with no input or output.
@@ -240,5 +303,6 @@ namespace DeviceIOControlLib.Wrapper
                 return res;
             } while (true);
         }
+
     }
 }
