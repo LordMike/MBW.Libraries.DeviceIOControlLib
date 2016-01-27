@@ -1,6 +1,6 @@
 using DeviceIOControlLib.Objects.Enums;
 
-namespace DeviceIOControlLib.Objects.FileSystem
+namespace DeviceIOControlLib.Objects.Usn
 {
     public interface IUSN_RECORD
     {
@@ -9,7 +9,7 @@ namespace DeviceIOControlLib.Objects.FileSystem
         ushort MinorVersion { get; set; }
         long Usn { get; set; }
         ulong TimeStamp { get; set; }
-        USN_REASON Reason { get; set; }
+        UsnJournalReasonMask Reason { get; set; }
         USN_SOURCE_INFO SourceInfo { get; set; }
         uint SecurityId { get; set; }
         FileAttributes FileAttributes { get; set; }

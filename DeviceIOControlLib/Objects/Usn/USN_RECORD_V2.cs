@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 
-namespace DeviceIOControlLib.Objects.FileSystem
+namespace DeviceIOControlLib.Objects.Usn
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct USN_RECORD_V2 : IUSN_RECORD
@@ -13,7 +13,7 @@ namespace DeviceIOControlLib.Objects.FileSystem
         private ulong _parentFileReferenceNumber;
         private long _usn;
         private ulong _timeStamp;
-        private USN_REASON _reason;
+        private UsnJournalReasonMask _reason;
         private USN_SOURCE_INFO _sourceInfo;
         private uint _securityId;
         private FileAttributes _fileAttributes;
@@ -57,7 +57,7 @@ namespace DeviceIOControlLib.Objects.FileSystem
             get { return _timeStamp; }
             set { _timeStamp = value; }
         }
-        public USN_REASON Reason
+        public UsnJournalReasonMask Reason
         {
             get { return _reason; }
             set { _reason = value; }

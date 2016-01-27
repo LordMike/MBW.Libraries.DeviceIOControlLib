@@ -98,7 +98,7 @@ namespace DemoApplication
                 Console.WriteLine("NextUsn #: {0:N0}", data.NextUsn.Usn);
                 Console.WriteLine("LowestValidUsn #: {0:N0}", data.LowestValidUsn.Usn);
                 Console.WriteLine("MaxUsn #: {0:N0}", data.MaxUsn.Usn);
-                Console.WriteLine("MaximumSize: {0:N0}", data.MaximumSize );
+                Console.WriteLine("MaximumSize: {0:N0}", data.MaximumSize);
                 Console.WriteLine("AllocationDelta: {0:N0}", data.AllocationDelta);
             }
 

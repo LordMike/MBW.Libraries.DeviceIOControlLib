@@ -1,6 +1,6 @@
 using System;
 
-namespace DeviceIOControlLib.Objects.FileSystem
+namespace DeviceIOControlLib.Objects.Usn
 {
     [Flags]
     public enum USN_SOURCE_INFO : uint

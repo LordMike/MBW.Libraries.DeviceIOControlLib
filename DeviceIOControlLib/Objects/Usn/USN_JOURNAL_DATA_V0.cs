@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace DeviceIOControlLib.Objects.FileSystem
+namespace DeviceIOControlLib.Objects.Usn
 {
     [StructLayout(LayoutKind.Sequential)]
     public struct USN_JOURNAL_DATA_V0
