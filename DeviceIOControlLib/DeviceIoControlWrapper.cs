@@ -648,7 +648,15 @@ namespace DeviceIOControlLib
         //FsctlQueryFatBpb
         //FsctlQueryRetrievalPointers
         //FsctlQueryOnDiskVolumeInfo
-        //FsctlQueryUsnJournal
+        
+        /// <summary><see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa364583(v=vs.85).aspx"/></summary>
+        public USN_JOURNAL_DATA_V0 FileSystemQueryUsnJournal()
+        {
+            USN_JOURNAL_DATA_V0 res = InvokeIoControl<USN_JOURNAL_DATA_V0>(Handle, IOControlCode.FsctlQueryUsnJournal);
+
+            return res;
+        }
+
         //FsctlReadFileUsnData
         //FsctlReadPropertyData
         //FsctlReadRawEncrypted

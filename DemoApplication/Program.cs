@@ -40,6 +40,9 @@ namespace DemoApplication
 
         private static void Main()
         {
+            // Read USN Journal
+            ExampleUsnJournal();
+            
             // Read disk sector size
             ExampleDiskIO();
 
@@ -64,6 +67,31 @@ namespace DemoApplication
 
             Console.WriteLine("Done.");
             Console.ReadLine();
+        }
+
+        private static void ExampleUsnJournal()
+        {
+            const string drive = @"\\.\C:";
+
+            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (hddHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            DeviceIOControlWrapper hddDeviceIo = new DeviceIOControlWrapper(hddHandle);
+
+            USN_JOURNAL_DATA_V0 data = hddDeviceIo.FileSystemQueryUsnJournal();
+
+            Console.WriteLine("USN #: {0:N0}", data.UsnJournalID);
+
+            Console.WriteLine();
         }
 
         private static void ExampleDiskIO()

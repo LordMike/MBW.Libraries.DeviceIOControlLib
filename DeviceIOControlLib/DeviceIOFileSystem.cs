@@ -182,6 +182,38 @@ namespace DeviceIOControlLib
     }
 
     [StructLayout(LayoutKind.Sequential)]
+    public struct USN
+    {
+        public long Usn;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct USN_JOURNAL_DATA_V0
+    {
+        public long UsnJournalID;
+        public USN FirstUsn;
+        public USN NextUsn;
+        public USN LowestValidUsn;
+        public USN MaxUsn;
+        public long MaximumSize;
+        public long AllocationDelta;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    public struct USN_JOURNAL_DATA_V1
+    {
+        public long UsnJournalID;
+        public USN FirstUsn;
+        public USN NextUsn;
+        public USN LowestValidUsn;
+        public USN MaxUsn;
+        public long MaximumSize;
+        public long AllocationDelta;
+        public short MinSupportedMajorVersion;
+        public short MaxSupportedMajorVersion;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
     public struct MFT_ENUM_DATA_V0
     {
         public ulong StartFileReferenceNumber;
