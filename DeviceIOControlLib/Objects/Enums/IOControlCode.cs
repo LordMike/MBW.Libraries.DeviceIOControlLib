@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace DeviceIOControlLib
+namespace DeviceIOControlLib.Objects.Enums
 {
     /// <summary>
     /// IO Control Codes

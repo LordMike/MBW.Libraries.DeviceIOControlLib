@@ -9,6 +9,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using DeviceIOControlLib;
+using DeviceIOControlLib.Objects.Disk;
+using DeviceIOControlLib.Objects.Enums;
+using DeviceIOControlLib.Objects.FileSystem;
+using DeviceIOControlLib.Wrapper;
 using Microsoft.Win32.SafeHandles;
 using FileAttributes = System.IO.FileAttributes;
 

@@ -1,13 +1,18 @@
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using DeviceIOControlLib.Objects.Disk;
+using DeviceIOControlLib.Objects.Enums;
+using DeviceIOControlLib.Objects.FileSystem;
+using DeviceIOControlLib.Objects.Volume;
+using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
-namespace DeviceIOControlLib
+namespace DeviceIOControlLib.Wrapper
 {
     public class DeviceIOControlWrapper : IDisposable
     {
