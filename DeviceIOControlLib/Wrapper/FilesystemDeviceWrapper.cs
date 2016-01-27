@@ -36,14 +36,10 @@ namespace DeviceIOControlLib.Wrapper
             ulong nextUsn = 0;
             const int chunkSize = 1 * 1024 * 1024;      // 1 MB chunks
 
-            IntPtr dataPtr = IntPtr.Zero;
-
             List<IUSN_RECORD> res = new List<IUSN_RECORD>();
 
-            try
+            using (UnmanagedMemory mem = new UnmanagedMemory(chunkSize))
             {
-                dataPtr = Marshal.AllocHGlobal(chunkSize);
-
                 do
                 {
                     MFT_ENUM_DATA_V0 input = new MFT_ENUM_DATA_V0();
@@ -76,12 +72,12 @@ namespace DeviceIOControlLib.Wrapper
                         byte[] bytes = new byte[length];
                         Array.Copy(data, dataOffset, bytes, 0, length);
 
-                        Marshal.Copy(bytes, 0, dataPtr, bytes.Length);
+                        Marshal.Copy(bytes, 0, mem, bytes.Length);
 
                         switch (majorVersion)
                         {
                             case 2:
-                                USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(dataPtr, typeof(USN_RECORD_V2));
+                                USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem, typeof(USN_RECORD_V2));
 
                                 // Parse string manually, as we cannot rely on the string to be null-terminated.
                                 recordv2.FileName = Encoding.Unicode.GetString(bytes, recordv2.FileNameOffset, recordv2.FileNameLength);
@@ -90,7 +86,7 @@ namespace DeviceIOControlLib.Wrapper
 
                                 break;
                             case 3:
-                                USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(dataPtr, typeof(USN_RECORD_V3));
+                                USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem, typeof(USN_RECORD_V3));
 
                                 // Parse string manually, as we cannot rely on the string to be null-terminated.
                                 recordv3.FileName = Encoding.Unicode.GetString(bytes, recordv3.FileNameOffset, recordv3.FileNameLength);
@@ -111,11 +107,6 @@ namespace DeviceIOControlLib.Wrapper
                     // Fetch next chunk
                 } while (true);
             }
-            finally
-            {
-                if (dataPtr != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
-            }
 
             return res.ToArray();
         }
@@ -126,16 +117,12 @@ namespace DeviceIOControlLib.Wrapper
         public FileSystemStats[] FileSystemGetStatistics()
         {
             byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlFileSystemGetStatistics, 512);
-            IntPtr dataPtr = IntPtr.Zero;
 
             FileSystemStats[] res;
 
-            try
+            using (UnmanagedMemory mem = new UnmanagedMemory(data))
             {
-                dataPtr = Marshal.AllocHGlobal(data.Length);
-                Marshal.Copy(data, 0, dataPtr, data.Length);
-
-                IntPtr currentDataPtr = dataPtr;
+                IntPtr currentDataPtr = mem;
 
                 FILESYSTEM_STATISTICS firstStats = (FILESYSTEM_STATISTICS)Marshal.PtrToStructure(currentDataPtr, typeof(FILESYSTEM_STATISTICS));
 
@@ -175,11 +162,6 @@ namespace DeviceIOControlLib.Wrapper
 
                     currentDataPtr += elementSize;
                 }
-            }
-            finally
-            {
-                if (dataPtr != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
             }
 
             return res;
@@ -244,62 +226,54 @@ namespace DeviceIOControlLib.Wrapper
             uint singleExtentSize = (uint)Marshal.SizeOf(typeof(RETRIEVAL_POINTERS_EXTENT));
 
             int lastError;
-            IntPtr dataPtr = IntPtr.Zero;
 
-            try
+            do
             {
-                do
+                byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlGetRetrievalPointers, chunkSize, input, out lastError);
+
+                RETRIEVAL_POINTERS_BUFFER output = new RETRIEVAL_POINTERS_BUFFER();
+                output.ExtentCount = BitConverter.ToUInt32(data, 0);
+                output.StartingVcn = BitConverter.ToUInt64(data, sizeof(ulong));
+
+                output.Extents = new RETRIEVAL_POINTERS_EXTENT[output.ExtentCount];
+
+                // Parse extents
+                int extentsSize = (int)(output.ExtentCount * singleExtentSize);
+                using (var dataPtr = new UnmanagedMemory(extentsSize))
                 {
-                    byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlGetRetrievalPointers, chunkSize, input, out lastError);
-
-                    RETRIEVAL_POINTERS_BUFFER output = new RETRIEVAL_POINTERS_BUFFER();
-                    output.ExtentCount = BitConverter.ToUInt32(data, 0);
-                    output.StartingVcn = BitConverter.ToUInt64(data, sizeof(ulong));
-
-                    output.Extents = new RETRIEVAL_POINTERS_EXTENT[output.ExtentCount];
-
-                    // Parse extents
-                    int extentsSize = (int)(output.ExtentCount * singleExtentSize);
-                    dataPtr = Marshal.AllocHGlobal(extentsSize);
-
                     Marshal.Copy(data, sizeof(ulong) + sizeof(ulong), dataPtr, extentsSize);
 
                     for (ulong i = 0; i < output.ExtentCount; i++)
                     {
-                        IntPtr currentPtr = dataPtr + (int)(singleExtentSize * i);
+                        IntPtr currentPtr = dataPtr.Handle + (int)(singleExtentSize * i);
                         output.Extents[i] = (RETRIEVAL_POINTERS_EXTENT)Marshal.PtrToStructure(currentPtr, typeof(RETRIEVAL_POINTERS_EXTENT));
                     }
+                }
 
-                    // Make extents more readable
-                    for (ulong i = 0; i < output.ExtentCount; i++)
-                    {
-                        ulong startVcn = i == 0
-                            ? output.StartingVcn
-                            : output.Extents[i - 1].NextVcn;
+                // Make extents more readable
+                for (ulong i = 0; i < output.ExtentCount; i++)
+                {
+                    ulong startVcn = i == 0
+                        ? output.StartingVcn
+                        : output.Extents[i - 1].NextVcn;
 
-                        ulong size = output.Extents[i].NextVcn - startVcn;
+                    ulong size = output.Extents[i].NextVcn - startVcn;
 
-                        FileExtentInfo extent = new FileExtentInfo();
-                        extent.Size = size;
-                        extent.Vcn = startVcn;
-                        extent.Lcn = output.Extents[i].Lcn;
+                    FileExtentInfo extent = new FileExtentInfo();
+                    extent.Size = size;
+                    extent.Vcn = startVcn;
+                    extent.Lcn = output.Extents[i].Lcn;
 
-                        extents.Add(extent);
-                    }
+                    extents.Add(extent);
+                }
 
-                    if (lastError == 38)
-                        // End of file reached
-                        break;
+                if (lastError == 38)
+                    // End of file reached
+                    break;
 
-                    // Prep the start point for the next call
-                    input.StartingVcn = output.Extents[output.ExtentCount - 1].NextVcn;
-                } while (lastError == 234);
-            }
-            finally
-            {
-                if (dataPtr != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
-            }
+                // Prep the start point for the next call
+                input.StartingVcn = output.Extents[output.ExtentCount - 1].NextVcn;
+            } while (lastError == 234);
 
             return extents.ToArray();
         }

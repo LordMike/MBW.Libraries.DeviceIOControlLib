@@ -98,6 +98,7 @@
     <Compile Include="Objects\FileSystem\VOLUME_BITMAP_BUFFER.cs" />
     <Compile Include="Objects\Volume\VOLUME_DISK_EXTENTS.cs" />
     <Compile Include="Objects\Volume\DISK_EXTENT.cs" />
+    <Compile Include="Utilities\UnmanagedMemory.cs" />
     <Compile Include="Wrapper\DeviceIoControlHelper.cs" />
     <Compile Include="Objects\Disk\DISK_GEOMETRY.cs" />
     <Compile Include="Objects\FileSystem\RETRIEVAL_POINTER_BASE.cs" />

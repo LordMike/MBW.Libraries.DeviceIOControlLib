@@ -2,6 +2,7 @@ using System;
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
+using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib.Wrapper
@@ -26,25 +27,16 @@ namespace DeviceIOControlLib.Wrapper
 
             DISK_GEOMETRY_EX res;
 
-            IntPtr dataPtr = IntPtr.Zero;
-            try
+            using (UnmanagedMemory mem = new UnmanagedMemory(data))
             {
-                dataPtr = Marshal.AllocHGlobal(data.Length);
-                Marshal.Copy(data, 0, dataPtr, data.Length);
-
-                res.Geometry = (DISK_GEOMETRY)Marshal.PtrToStructure(dataPtr, typeof(DISK_GEOMETRY));
+                res.Geometry = (DISK_GEOMETRY)Marshal.PtrToStructure(mem, typeof(DISK_GEOMETRY));
                 res.DiskSize = BitConverter.ToInt64(data, Marshal.SizeOf(typeof(DISK_GEOMETRY)));
 
-                IntPtr tmpPtr = dataPtr + Marshal.SizeOf(typeof(DISK_GEOMETRY)) + sizeof(long);
+                IntPtr tmpPtr = mem.Handle + Marshal.SizeOf(typeof(DISK_GEOMETRY)) + sizeof(long);
                 res.PartitionInformation = (DISK_PARTITION_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_PARTITION_INFO));
 
                 tmpPtr += res.PartitionInformation.SizeOfPartitionInfo;
                 res.DiskInt13Info = (DISK_EX_INT13_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_EX_INT13_INFO));
-            }
-            finally
-            {
-                if (dataPtr == IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
             }
 
             return res;

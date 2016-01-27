@@ -2,13 +2,14 @@ using System;
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.Volume;
+using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib.Wrapper
 {
     public class VolumeDeviceWrapper : DeviceIoWrapperBase
     {
-        public VolumeDeviceWrapper(SafeFileHandle handle, bool ownsHandle = false) 
+        public VolumeDeviceWrapper(SafeFileHandle handle, bool ownsHandle = false)
             : base(handle, ownsHandle)
         {
         }
@@ -27,25 +28,16 @@ namespace DeviceIOControlLib.Wrapper
             res.NumberOfDiskExtents = BitConverter.ToUInt32(data, 0);
             res.Extents = new DISK_EXTENT[res.NumberOfDiskExtents];
 
-            IntPtr dataPtr = IntPtr.Zero;
-            try
+            using (UnmanagedMemory dataPtr = new UnmanagedMemory(data))
             {
-                dataPtr = Marshal.AllocHGlobal(data.Length);
-                Marshal.Copy(data, 0, dataPtr, data.Length);
-
-                // TODO: This code needs to be tested for disks with more than one extent.
+                // TODO: This code needs to be tested for volumes with more than one extent.
                 for (int i = 0; i < res.NumberOfDiskExtents; i++)
                 {
-                    IntPtr currentDataPtr = dataPtr + 8 + i * Marshal.SizeOf(typeof(DISK_EXTENT));
+                    IntPtr currentDataPtr = dataPtr.Handle + 8 + i * Marshal.SizeOf(typeof(DISK_EXTENT));
                     DISK_EXTENT extent = (DISK_EXTENT)Marshal.PtrToStructure(currentDataPtr, typeof(DISK_EXTENT));
 
                     res.Extents[i] = extent;
                 }
-            }
-            finally
-            {
-                if (dataPtr != IntPtr.Zero)
-                    Marshal.FreeHGlobal(dataPtr);
             }
 
             return res;
