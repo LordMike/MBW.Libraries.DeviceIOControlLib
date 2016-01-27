@@ -110,6 +110,7 @@
     <Compile Include="Wrapper\DiskDeviceWrapper.cs" />
     <Compile Include="Wrapper\FilesystemDeviceWrapper.cs" />
     <Compile Include="Wrapper\StorageDeviceWrapper.cs" />
+    <Compile Include="Wrapper\UsnDeviceWrapper.cs" />
     <Compile Include="Wrapper\VolumeDeviceWrapper.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

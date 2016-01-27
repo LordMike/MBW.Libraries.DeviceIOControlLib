@@ -78,7 +78,7 @@ namespace DemoApplication
             const string drive = @"\\.\C:";
 
             Console.WriteLine(@"## Exmaple on {0} ##", drive);
-            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+            SafeFileHandle hddHandle = CreateFile(drive, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (hddHandle.IsInvalid)
             {
@@ -89,9 +89,9 @@ namespace DemoApplication
                 return;
             }
 
-            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(hddHandle))
+            using (UsnDeviceWrapper usnIo = new UsnDeviceWrapper(hddHandle))
             {
-                USN_JOURNAL_DATA_V0 data = fsIo.FileSystemQueryUsnJournal();
+                USN_JOURNAL_DATA_V0 data = usnIo.FileSystemQueryUsnJournal();
 
                 Console.WriteLine("USN #: {0:N0}", data.UsnJournalID);
             }
@@ -155,10 +155,13 @@ namespace DemoApplication
                 return;
             }
 
-            using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
+            using (volumeHandle)
             {
                 // Extract a complete file list from the target drive
-                IUSN_RECORD[] usnData = fsIo.FileSystemEnumUsnData();
+                IUSN_RECORD[] usnData;
+                using (UsnDeviceWrapper usnIo = new UsnDeviceWrapper(volumeHandle))
+                    usnData = usnIo.FileSystemEnumUsnData();
+
                 Console.WriteLine("Found {0:N0} file/folder records", usnData.Length);
 
                 // Count the unique file names
@@ -194,7 +197,9 @@ namespace DemoApplication
                 files.Sort();
 
                 // FS Stats
-                FileSystemStats[] fsStats = fsIo.FileSystemGetStatistics();
+                FileSystemStats[] fsStats;
+                using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
+                    fsStats = fsIo.FileSystemGetStatistics();
 
                 for (int i = 0; i < fsStats.Length; i++)
                 {
@@ -551,7 +556,7 @@ namespace DemoApplication
             using (FilesystemDeviceWrapper fsIo = new FilesystemDeviceWrapper(volumeHandle))
             {
                 // Bitmap
-                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap(0);
+                VOLUME_BITMAP_BUFFER bitmap = fsIo.FileSystemGetVolumeBitmap();
 
                 Console.WriteLine("Bitmap: {0:N0} clusters", bitmap.Buffer.Length);
 
