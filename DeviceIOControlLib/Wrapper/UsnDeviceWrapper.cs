@@ -42,6 +42,7 @@ namespace DeviceIOControlLib.Wrapper
 
                     int errorCode;
                     byte[] data = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.FsctlEnumUsnData, chunkSize, input, out errorCode);
+                    Marshal.Copy(data, 0, mem, data.Length);
 
                     if (errorCode != 0)
                         // Exit when theres no more to do
@@ -54,35 +55,30 @@ namespace DeviceIOControlLib.Wrapper
                     while (dataOffset < data.Length)
                     {
                         // Get record length
-                        int length = BitConverter.ToInt32(data, dataOffset);
-                        ushort majorVersion = BitConverter.ToUInt16(data, dataOffset + sizeof(int));
+                        int length = Marshal.ReadInt32(mem, dataOffset);
+                        int majorVersion = Marshal.ReadByte(mem, dataOffset + sizeof(int)) + (Marshal.ReadByte(mem, dataOffset + sizeof(int) + 1) << 8);
 
                         if (length <= 0)
                             // No more records
                             break;
 
                         // Copy out record subset
-                        byte[] bytes = new byte[length];
-                        Array.Copy(data, dataOffset, bytes, 0, length);
-
-                        Marshal.Copy(bytes, 0, mem, bytes.Length);
-
                         switch (majorVersion)
                         {
                             case 2:
-                                USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem, typeof(USN_RECORD_V2));
+                                USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V2));
 
                                 // Parse string manually, as we cannot rely on the string to be null-terminated.
-                                recordv2.FileName = Encoding.Unicode.GetString(bytes, recordv2.FileNameOffset, recordv2.FileNameLength);
+                                recordv2.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv2.FileNameOffset, recordv2.FileNameLength / 2);
 
                                 res.Add(recordv2);
 
                                 break;
                             case 3:
-                                USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem, typeof(USN_RECORD_V3));
+                                USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V3));
 
                                 // Parse string manually, as we cannot rely on the string to be null-terminated.
-                                recordv3.FileName = Encoding.Unicode.GetString(bytes, recordv3.FileNameOffset, recordv3.FileNameLength);
+                                recordv3.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv3.FileNameOffset, recordv3.FileNameLength / 2);
 
                                 res.Add(recordv3);
 
@@ -103,7 +99,7 @@ namespace DeviceIOControlLib.Wrapper
 
             return res.ToArray();
         }
-        
+
         /// <summary><see cref="https://msdn.microsoft.com/en-us/library/windows/desktop/aa364583(v=vs.85).aspx"/></summary>
         public USN_JOURNAL_DATA_V0 FileSystemQueryUsnJournal()
         {

@@ -93,7 +93,13 @@ namespace DemoApplication
             {
                 USN_JOURNAL_DATA_V0 data = usnIo.FileSystemQueryUsnJournal();
 
-                Console.WriteLine("USN #: {0:N0}", data.UsnJournalID);
+                Console.WriteLine("UsnJournalID: {0:N0}", data.UsnJournalID);
+                Console.WriteLine("FirstUsn #: {0:N0}", data.FirstUsn.Usn);
+                Console.WriteLine("NextUsn #: {0:N0}", data.NextUsn.Usn);
+                Console.WriteLine("LowestValidUsn #: {0:N0}", data.LowestValidUsn.Usn);
+                Console.WriteLine("MaxUsn #: {0:N0}", data.MaxUsn.Usn);
+                Console.WriteLine("MaximumSize: {0:N0}", data.MaximumSize );
+                Console.WriteLine("AllocationDelta: {0:N0}", data.AllocationDelta);
             }
 
             Console.WriteLine();
