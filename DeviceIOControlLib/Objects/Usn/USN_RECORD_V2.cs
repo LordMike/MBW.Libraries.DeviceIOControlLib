@@ -47,7 +47,7 @@ namespace DeviceIOControlLib.Objects.Usn
             get { return _parentFileReferenceNumber; }
             set { _parentFileReferenceNumber = value; }
         }
-        public long Usn
+        public USN Usn
         {
             get { return _usn; }
             set { _usn = value; }

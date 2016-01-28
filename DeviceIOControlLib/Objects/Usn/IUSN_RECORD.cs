@@ -7,7 +7,7 @@ namespace DeviceIOControlLib.Objects.Usn
         uint RecordLength { get; set; }
         ushort MajorVersion { get; set; }
         ushort MinorVersion { get; set; }
-        long Usn { get; set; }
+        USN Usn { get; set; }
         ulong TimeStamp { get; set; }
         UsnJournalReasonMask Reason { get; set; }
         USN_SOURCE_INFO SourceInfo { get; set; }
