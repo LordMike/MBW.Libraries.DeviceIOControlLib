@@ -18,16 +18,13 @@ namespace DeviceIOControlLib.Wrapper
             Handle = handle;
         }
 
-        public void Close()
-        {
-            if (Handle != null && !Handle.IsClosed)
-                Handle.Close();
-        }
-
         public void Dispose()
         {
             if (_ownsHandle)
-                Close();
+            {
+                if (Handle != null && !Handle.IsClosed)
+                    Handle.Dispose();
+            }
         }
     }
 }

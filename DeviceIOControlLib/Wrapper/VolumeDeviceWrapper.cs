@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.Volume;
 using DeviceIOControlLib.Utilities;
@@ -33,8 +32,8 @@ namespace DeviceIOControlLib.Wrapper
                 // TODO: This code needs to be tested for volumes with more than one extent.
                 for (int i = 0; i < res.NumberOfDiskExtents; i++)
                 {
-                    IntPtr currentDataPtr = dataPtr.Handle + 8 + i * Marshal.SizeOf(typeof(DISK_EXTENT));
-                    DISK_EXTENT extent = (DISK_EXTENT)Marshal.PtrToStructure(currentDataPtr, typeof(DISK_EXTENT));
+                    IntPtr currentDataPtr = new IntPtr(dataPtr.Handle.ToInt64() + 8 + i * MarshalHelper.SizeOf<DISK_EXTENT>());
+                    DISK_EXTENT extent = currentDataPtr.ToStructure<DISK_EXTENT>();
 
                     res.Extents[i] = extent;
                 }

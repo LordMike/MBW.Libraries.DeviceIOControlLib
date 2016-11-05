@@ -39,9 +39,8 @@ namespace DeviceIOControlLib.Wrapper
             {
                 IntPtr currentDataPtr = mem;
 
-                FILESYSTEM_STATISTICS firstStats = (FILESYSTEM_STATISTICS)Marshal.PtrToStructure(currentDataPtr, typeof(FILESYSTEM_STATISTICS));
-
-                int fsStatsSize = Marshal.SizeOf(typeof(FILESYSTEM_STATISTICS));
+                FILESYSTEM_STATISTICS firstStats = currentDataPtr.ToStructure<FILESYSTEM_STATISTICS>();
+                uint fsStatsSize = MarshalHelper.SizeOf<FILESYSTEM_STATISTICS>();
 
                 int elementSize = (int)firstStats.SizeOfCompleteStructure;
                 int procCount = data.Length / elementSize;
@@ -51,23 +50,23 @@ namespace DeviceIOControlLib.Wrapper
                 for (int i = 0; i < procCount; i++)
                 {
                     res[i] = new FileSystemStats();
-                    res[i].Stats = (FILESYSTEM_STATISTICS)Marshal.PtrToStructure(currentDataPtr, typeof(FILESYSTEM_STATISTICS));
+                    res[i].Stats = currentDataPtr.ToStructure<FILESYSTEM_STATISTICS>();
 
                     switch (res[i].Stats.FileSystemType)
                     {
                         case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_NTFS:
-                            NTFS_STATISTICS ntfsStats = (NTFS_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(NTFS_STATISTICS));
+                            NTFS_STATISTICS ntfsStats = new IntPtr(currentDataPtr.ToInt64() + fsStatsSize).ToStructure<NTFS_STATISTICS>();
 
                             res[i].FSStats = ntfsStats;
 
                             break;
                         case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_FAT:
-                            FAT_STATISTICS fatStats = (FAT_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(FAT_STATISTICS));
+                            FAT_STATISTICS fatStats = new IntPtr(currentDataPtr.ToInt64() + fsStatsSize).ToStructure<FAT_STATISTICS>();
 
                             res[i].FSStats = fatStats;
                             break;
                         case FILESYSTEM_STATISTICS_TYPE.FILESYSTEM_STATISTICS_TYPE_EXFAT:
-                            EXFAT_STATISTICS exFatStats = (EXFAT_STATISTICS)Marshal.PtrToStructure(currentDataPtr + fsStatsSize, typeof(EXFAT_STATISTICS));
+                            EXFAT_STATISTICS exFatStats = new IntPtr(currentDataPtr.ToInt64() + fsStatsSize).ToStructure<EXFAT_STATISTICS>();
 
                             res[i].FSStats = exFatStats;
                             break;
@@ -75,7 +74,7 @@ namespace DeviceIOControlLib.Wrapper
                             throw new ArgumentOutOfRangeException();
                     }
 
-                    currentDataPtr += elementSize;
+                    currentDataPtr = new IntPtr(currentDataPtr.ToInt64() + elementSize);
                 }
             }
 
@@ -105,7 +104,7 @@ namespace DeviceIOControlLib.Wrapper
             res.FileRecordLength = BitConverter.ToUInt32(data, 8);
 
             res.FileRecordBuffer = new byte[res.FileRecordLength];
-            Array.Copy(data, 8 + 4, res.FileRecordBuffer, 0, res.FileRecordLength);
+            Array.Copy(data, 8 + 4, res.FileRecordBuffer, 0, (int)res.FileRecordLength);
 
             return res;
         }
@@ -138,7 +137,7 @@ namespace DeviceIOControlLib.Wrapper
             List<FileExtentInfo> extents = new List<FileExtentInfo>();
 
             uint chunkSize = 1024;
-            uint singleExtentSize = (uint)Marshal.SizeOf(typeof(RETRIEVAL_POINTERS_EXTENT));
+            uint singleExtentSize = MarshalHelper.SizeOf<RETRIEVAL_POINTERS_EXTENT>();
 
             int lastError;
 
@@ -160,8 +159,8 @@ namespace DeviceIOControlLib.Wrapper
 
                     for (ulong i = 0; i < output.ExtentCount; i++)
                     {
-                        IntPtr currentPtr = dataPtr.Handle + (int)(singleExtentSize * i);
-                        output.Extents[i] = (RETRIEVAL_POINTERS_EXTENT)Marshal.PtrToStructure(currentPtr, typeof(RETRIEVAL_POINTERS_EXTENT));
+                        IntPtr currentPtr = new IntPtr(dataPtr.Handle.ToInt64() + (int)(singleExtentSize * i));
+                        output.Extents[i] = currentPtr.ToStructure<RETRIEVAL_POINTERS_EXTENT>();
                     }
                 }
 
@@ -279,7 +278,7 @@ namespace DeviceIOControlLib.Wrapper
 
             byte[] res = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.FsctlQueryAllocatedRanges, input, 512);
 
-            int singleSize = Marshal.SizeOf(typeof(FILE_ALLOCATED_RANGE_BUFFER));
+            int singleSize = (int)MarshalHelper.SizeOf<FILE_ALLOCATED_RANGE_BUFFER>();
             List<FILE_ALLOCATED_RANGE_BUFFER> ranges = new List<FILE_ALLOCATED_RANGE_BUFFER>();
 
             for (int i = 0; i < res.Length; i += singleSize)

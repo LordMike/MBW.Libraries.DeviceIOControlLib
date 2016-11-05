@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
@@ -58,22 +57,21 @@ namespace DeviceIOControlLib.Wrapper
             switch (majorVersion)
             {
                 case 2:
-                    USN_RECORD_V2 recordv2 = (USN_RECORD_V2)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V2));
+                    USN_RECORD_V2 recordv2 = new IntPtr(mem.Handle.ToInt64() + dataOffset) .ToStructure<USN_RECORD_V2>();
 
                     // Parse string manually, as we cannot rely on the string to be null-terminated.
-                    recordv2.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv2.FileNameOffset, recordv2.FileNameLength / 2);
+                    recordv2.FileName = Marshal.PtrToStringUni(new IntPtr(mem.Handle.ToInt64() + dataOffset + recordv2.FileNameOffset), recordv2.FileNameLength / 2);
 
                     return recordv2;
                 case 3:
-                    USN_RECORD_V3 recordv3 = (USN_RECORD_V3)Marshal.PtrToStructure(mem.Handle + dataOffset, typeof(USN_RECORD_V3));
+                    USN_RECORD_V3 recordv3 = new IntPtr(mem.Handle.ToInt64() + dataOffset).ToStructure<USN_RECORD_V3>();
 
                     // Parse string manually, as we cannot rely on the string to be null-terminated.
-                    recordv3.FileName = Marshal.PtrToStringUni(mem.Handle + dataOffset + recordv3.FileNameOffset, recordv3.FileNameLength / 2);
+                    recordv3.FileName = Marshal.PtrToStringUni(new IntPtr(mem.Handle.ToInt64() + dataOffset + recordv3.FileNameOffset), recordv3.FileNameLength / 2);
 
                     return recordv3;
                 default:
                     // Ignore
-                    Debugger.Break();
                     break;
             }
 

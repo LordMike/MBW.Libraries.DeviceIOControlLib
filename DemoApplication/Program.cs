@@ -8,10 +8,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
-using DeviceIOControlLib;
 using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
+using DeviceIOControlLib.Objects.Usn;
 using DeviceIOControlLib.Wrapper;
 using Microsoft.Win32.SafeHandles;
 using FileAttributes = System.IO.FileAttributes;
@@ -20,7 +20,7 @@ namespace DemoApplication
 {
     class Program
     {
-        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
         private static extern SafeFileHandle CreateFile(
            string lpFileName,
            [MarshalAs(UnmanagedType.U4)] FileAccess dwDesiredAccess,

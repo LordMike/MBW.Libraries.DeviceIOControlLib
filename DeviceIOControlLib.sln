@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 2012
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceIOControlLib", "DeviceIOControlLib\DeviceIOControlLib.csproj", "{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}"
+# Visual Studio 14
+VisualStudioVersion = 14.0.25420.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "DeviceIOControlLib", "DeviceIOControlLib\DeviceIOControlLib.xproj", "{E97B440E-2262-48FF-A55F-18BEAB45002C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DemoApplication", "DemoApplication\DemoApplication.csproj", "{68922CD2-A213-43B5-B6AF-98BB0B37E374}"
+Project("{8BB2217D-0F2D-49D1-97BC-3654ED321F3B}") = "DemoApplication", "DemoApplication\DemoApplication.xproj", "{21833BBC-D9D2-43CA-ADB1-EF51B7872CB1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,14 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{303F50C6-4EBB-45C5-BFEA-F5F39CAF0410}.Release|Any CPU.Build.0 = Release|Any CPU
-		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{68922CD2-A213-43B5-B6AF-98BB0B37E374}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E97B440E-2262-48FF-A55F-18BEAB45002C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E97B440E-2262-48FF-A55F-18BEAB45002C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E97B440E-2262-48FF-A55F-18BEAB45002C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E97B440E-2262-48FF-A55F-18BEAB45002C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{21833BBC-D9D2-43CA-ADB1-EF51B7872CB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{21833BBC-D9D2-43CA-ADB1-EF51B7872CB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{21833BBC-D9D2-43CA-ADB1-EF51B7872CB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{21833BBC-D9D2-43CA-ADB1-EF51B7872CB1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -1,5 +1,4 @@
 using System;
-using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Utilities;
@@ -29,14 +28,14 @@ namespace DeviceIOControlLib.Wrapper
 
             using (UnmanagedMemory mem = new UnmanagedMemory(data))
             {
-                res.Geometry = (DISK_GEOMETRY)Marshal.PtrToStructure(mem, typeof(DISK_GEOMETRY));
-                res.DiskSize = BitConverter.ToInt64(data, Marshal.SizeOf(typeof(DISK_GEOMETRY)));
+                res.Geometry = mem.Handle.ToStructure<DISK_GEOMETRY>();
+                res.DiskSize = BitConverter.ToInt64(data, (int)MarshalHelper.SizeOf<DISK_GEOMETRY>());
 
-                IntPtr tmpPtr = mem.Handle + Marshal.SizeOf(typeof(DISK_GEOMETRY)) + sizeof(long);
-                res.PartitionInformation = (DISK_PARTITION_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_PARTITION_INFO));
+                IntPtr tmpPtr = new IntPtr(mem.Handle.ToInt64() + MarshalHelper.SizeOf<DISK_GEOMETRY>() + sizeof(long));
+                res.PartitionInformation = tmpPtr.ToStructure<DISK_PARTITION_INFO>();
 
-                tmpPtr += res.PartitionInformation.SizeOfPartitionInfo;
-                res.DiskInt13Info = (DISK_EX_INT13_INFO)Marshal.PtrToStructure(tmpPtr, typeof(DISK_EX_INT13_INFO));
+                tmpPtr = new IntPtr(tmpPtr.ToInt64() + res.PartitionInformation.SizeOfPartitionInfo);
+                res.DiskInt13Info = tmpPtr.ToStructure<DISK_EX_INT13_INFO>();
             }
 
             return res;
