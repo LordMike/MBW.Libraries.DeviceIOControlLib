@@ -1,6 +1,26 @@
 ﻿{
   "version": "0.1.0-alpha",
 
+  "title": "DeviceIOControlLib",
+  "description": "Library to interact with Windows' DeviceIoControl method",
+  "authors": [ "LordMike" ],
+
+  "packOptions": {
+    "owners": [ "LordMike" ],
+    "tags": [ "DeviceIoControl" ],
+    "projectUrl": "https://github.com/lordmike/deviceiocontrollib",
+    "licenseUrl": "https://github.com/lordmike/deviceiocontrollib/blob/master/LICENSE.txt",
+    "repository": {
+      "type": "git",
+      "url": "https://github.com/lordmike/deviceiocontrollib"
+    }
+  },
+
+  "buildOptions": {
+    "publicSign": true,
+    "keyFile": "../SigningKey.snk"
+  },
+
   "frameworks": {
     "net20": {
       "buildOptions": {
