@@ -33,6 +33,7 @@ namespace DeviceIOControlLib.Objects.Enums
         StoragePredictFailure = (IOFileDevice.MassStorage << 16) | (0x0440 << 2) | IOMethod.Buffered | (0 << 14),
         StorageObsoleteResetBus = (IOFileDevice.MassStorage << 16) | (0x0400 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
         StorageObsoleteResetDevice = (IOFileDevice.MassStorage << 16) | (0x0401 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        StorageQueryProperty = (IOFileDevice.MassStorage << 16) | (0x0500 << 2) | IOMethod.Buffered | (0 << 14),
         // DISK
         DiskGetDriveGeometry = (IOFileDevice.Disk << 16) | (0x0000 << 2) | IOMethod.Buffered | (0 << 14),
         DiskGetDriveGeometryEx = (IOFileDevice.Disk << 16) | (0x0028 << 2) | IOMethod.Buffered | (0 << 14),

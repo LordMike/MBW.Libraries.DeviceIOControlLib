@@ -1,4 +1,7 @@
+using System.Text;
 using DeviceIOControlLib.Objects.Enums;
+using DeviceIOControlLib.Objects.Storage;
+using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib.Wrapper
@@ -14,6 +17,35 @@ namespace DeviceIOControlLib.Wrapper
         //StorageCheckVerify
         //StorageCheckVerify2
         //StorageMediaRemoval
+
+        public STORAGE_DEVICE_DESCRIPTOR_PARSED StorageGetDeviceProperty()
+        {
+            STORAGE_PROPERTY_QUERY query = new STORAGE_PROPERTY_QUERY();
+            query.QueryType = STORAGE_QUERY_TYPE.PropertyStandardQuery;
+            query.PropertyId = STORAGE_PROPERTY_ID.StorageDeviceProperty;
+
+            byte[] res = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.StorageQueryProperty, query);
+            STORAGE_DEVICE_DESCRIPTOR descriptor = Utils.ByteArrayToStruct<STORAGE_DEVICE_DESCRIPTOR>(res, 0);
+
+            STORAGE_DEVICE_DESCRIPTOR_PARSED returnValue = new STORAGE_DEVICE_DESCRIPTOR_PARSED();
+
+            returnValue.Version = descriptor.Version;
+            returnValue.Size = descriptor.Size;
+            returnValue.DeviceType = descriptor.DeviceType;
+            returnValue.DeviceTypeModifier = descriptor.DeviceTypeModifier;
+            returnValue.RemovableMedia = descriptor.RemovableMedia;
+            returnValue.CommandQueueing = descriptor.CommandQueueing;
+            returnValue.VendorIdOffset = descriptor.VendorIdOffset;
+            returnValue.ProductIdOffset = descriptor.ProductIdOffset;
+            returnValue.ProductRevisionOffset = descriptor.ProductRevisionOffset;
+            returnValue.SerialNumberOffset = descriptor.SerialNumberOffset;
+            returnValue.BusType = descriptor.BusType;
+            returnValue.RawPropertiesLength = descriptor.RawPropertiesLength;
+            returnValue.RawDeviceProperties = descriptor.RawDeviceProperties;
+            returnValue.SerialNumber = Utils.ReadNullTerminatedString(res, (int)descriptor.SerialNumberOffset, Encoding.ASCII);
+
+            return returnValue;
+        }
 
         /// <summary>
         /// Used to f.ex. open/eject CD Rom trays
