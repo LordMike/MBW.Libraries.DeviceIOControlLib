@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Description>Library to interact with Windows' DeviceIoControl method</Description>
+    <AssemblyTitle>DeviceIOControlLib</AssemblyTitle>
+    <VersionPrefix>0.1.1</VersionPrefix>
+    <Authors>LordMike</Authors>
+    <TargetFrameworks>net20;net35;net40;netstandard1.3</TargetFrameworks>
+    <PublicSign>true</PublicSign>
+    <AssemblyName>DeviceIOControlLib</AssemblyName>
+    <AssemblyOriginatorKeyFile>../SigningKey.snk</AssemblyOriginatorKeyFile>
+    <SignAssembly>true</SignAssembly>
+    <PackageId>DeviceIOControlLib</PackageId>
+    <PackageTags>DeviceIoControl</PackageTags>
+    <PackageProjectUrl>https://github.com/lordmike/deviceiocontrollib</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/lordmike/deviceiocontrollib/blob/master/LICENSE.txt</PackageLicenseUrl>
+    <RepositoryType>git</RepositoryType>
+    <RepositoryUrl>https://github.com/lordmike/deviceiocontrollib</RepositoryUrl>
+    <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
+    <GenerateAssemblyCompanyAttribute>false</GenerateAssemblyCompanyAttribute>
+    <GenerateAssemblyProductAttribute>false</GenerateAssemblyProductAttribute>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net20' ">
+    <Reference Include="System" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net35' ">
+    <Reference Include="System" />
+  </ItemGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net40' ">
+    <Reference Include="System" />
+    <Reference Include="Microsoft.CSharp" />
+  </ItemGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'net20' ">
+    <DefineConstants>$(DefineConstants);NET20</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">
+    <DefineConstants>$(DefineConstants);NETCORE</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition=" '$(TargetFramework)' == 'netstandard1.3' ">
+    <PackageReference Include="Microsoft.Win32.Primitives" Version="4.0.1" />
+    <PackageReference Include="System.Collections" Version="4.0.11" />
+    <PackageReference Include="System.IO.FileSystem" Version="4.0.1" />
+    <PackageReference Include="System.IO.FileSystem.Primitives" Version="4.0.1" />
+    <PackageReference Include="System.Runtime" Version="4.1.0" />
+    <PackageReference Include="System.Runtime.Extensions" Version="4.1.0" />
+    <PackageReference Include="System.Runtime.InteropServices" Version="4.1.0" />
+  </ItemGroup>
+
+</Project>
