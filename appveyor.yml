@@ -12,6 +12,8 @@ build_script:
 - ps: msbuild /t:Pack /p:Configuration=Release /p:OutputPath=..\Nuget\ DeviceIOControlLib
 - ps: # Utilities
 - ps: msbuild /t:Build /p:Configuration=Release DemoApplication
+install:
+- msbuild /t:Restore
 artifacts:
 - path: Nuget\*.nupkg
 deploy:
