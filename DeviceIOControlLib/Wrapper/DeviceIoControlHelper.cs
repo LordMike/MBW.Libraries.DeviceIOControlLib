@@ -205,12 +205,21 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
         /// </summary>
-        public static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128)
+        public static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128, uint inputSizeOverride = 0)
         {
             uint returnedBytes = 0;
 
-            uint inputSize = MarshalHelper.SizeOf<V>();
+            uint inputSize;
             uint outputLength = increment;
+
+            if (inputSizeOverride > 0)
+            {
+                inputSize = inputSizeOverride;
+            }
+            else
+            {
+                inputSize = MarshalHelper.SizeOf<V>();
+            }
 
             do
             {

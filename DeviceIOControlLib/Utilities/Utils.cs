@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Generic;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -20,21 +21,57 @@ namespace DeviceIOControlLib.Utilities
             }
         }
 
-        public static string ReadNullTerminatedString(byte[] br, int index, Encoding encoding, int maxSize = 255)
+        public static string ReadNullTerminatedAsciiString(byte[] br, int index)
         {
-            if (maxSize <= 0)
-                return string.Empty;
-
             byte[] nameBytes = br;
             for (int i = index; i < nameBytes.Length; i++)
             {
                 if (nameBytes[i] == 0) // \0
                 {
-                    return encoding.GetString(nameBytes, index, i - index);
+                    return Encoding.ASCII.GetString(nameBytes, index, i - index);
                 }
             }
 
             return string.Empty;
+        }
+
+        /// <summary>
+        /// Reads strings terminated by null, until it hits a double-null (empty string)
+        /// </summary>
+        public static string ReadNullTerminatedUnicodeString(byte[] br, int index)
+        {
+            int idx = index;
+
+            // Locate next Unicode null
+            for (int i = index; i < br.Length; i += 2)
+            {
+                if (br[i] == 0 && br[i + 1] == 0) // UTF-16 null
+                {
+                    return Encoding.Unicode.GetString(br, index, i - index);
+                }
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Reads strings terminated by null, until it hits an empty string
+        /// </summary>
+        public static IEnumerable<string> ReadUnicodeStringArray(byte[] br, int index)
+        {
+            int idx = index;
+
+            while (true)
+            {
+                string str = ReadNullTerminatedUnicodeString(br, idx);
+
+                if (string.IsNullOrEmpty(str))
+                    yield break;
+
+                idx += Encoding.Unicode.GetByteCount(str) + 2;
+
+                yield return str;
+            }
         }
     }
 }

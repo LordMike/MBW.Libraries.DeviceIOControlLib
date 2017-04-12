@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.MountManager;
@@ -22,8 +23,7 @@ namespace DeviceIOControlLib.Wrapper
         {
             MOUNTMGR_MOUNT_POINT input = new MOUNTMGR_MOUNT_POINT();
 
-            // Fetch in increments of 32 bytes, as one extent (the most common case) is one extent pr. volume.
-            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.MountmgrQueryPoints, input, 32);
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.MountmgrQueryPoints, input, 512);
 
             uint mountPoints = BitConverter.ToUInt32(data, sizeof(uint));
             uint sizeOfMountPointStruct = MarshalHelper.SizeOf<MOUNTMGR_MOUNT_POINT>();
@@ -55,6 +55,24 @@ namespace DeviceIOControlLib.Wrapper
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// No reference
+        /// </summary>
+        public List<string> QueryDosVolumePaths(string deviceName)
+        {
+            int byteCount = Encoding.Unicode.GetByteCount(deviceName);
+            byte[] tmp = new byte[sizeof(ushort) + byteCount];
+
+            tmp[0] = (byte)(byteCount & 0xFF);
+            tmp[1] = (byte)((byteCount >> 8) & 0xFF);
+
+            Encoding.Unicode.GetBytes(deviceName, 0, deviceName.Length, tmp, 2);
+
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.MountmgrQueryDosVolumePaths, tmp, 64, (uint)tmp.Length);
+
+            return new List<string>(Utils.ReadUnicodeStringArray(data, sizeof(uint)));
         }
     }
 }

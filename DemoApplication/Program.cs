@@ -11,6 +11,7 @@ using System.Threading;
 using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
+using DeviceIOControlLib.Objects.MountManager;
 using DeviceIOControlLib.Objects.Usn;
 using DeviceIOControlLib.Wrapper;
 using Microsoft.Win32.SafeHandles;
@@ -126,25 +127,23 @@ namespace DemoApplication
 
             using (MountManagerWrapper mountManager = new MountManagerWrapper(deviceHandle, true))
             {
-                var xx = mountManager.MountQueryPoints();
+                List<MountPoint> mountPoints = mountManager.MountQueryPoints();
 
-                //DISK_GEOMETRY_EX info = mountManager.DiskGetDriveGeometryEx();
+                foreach (MountPoint mountPoint in mountPoints)
+                {
+                    Console.WriteLine("Mount point:");
+                    Console.WriteLine($"- Device Name: {mountPoint.DeviceName}");
+                    Console.WriteLine($"- Symbolic link name: {mountPoint.SymbolicLinkName}");
+                    Console.WriteLine($"- Device ID: {BitConverter.ToString(mountPoint.UniqueId).Replace("-", "")}");
 
-                //Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
+                    List<string> volumePaths = mountManager.QueryDosVolumePaths(mountPoint.DeviceName);
 
-                //switch (info.PartitionInformation.PartitionStyle)
-                //{
-                //    case PartitionStyle.PARTITION_STYLE_MBR:
-                //        Console.WriteLine("MBR Id: " + info.PartitionInformation.MbrSignature);
-                //        break;
-                //    case PartitionStyle.PARTITION_STYLE_GPT:
-                //        Console.WriteLine("GPT GUID: " + info.PartitionInformation.GptGuidId);
-                //        break;
-                //}
+                    Console.WriteLine($"- Paths ({volumePaths.Count:N0}): ");
+                    foreach (string volumePath in volumePaths)
+                        Console.WriteLine($"- Path: {volumePath}");
 
-                //PARTITION_INFORMATION_EX partitionInfo = mountManager.DiskGetPartitionInfoEx();
-
-                //Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
+                    Console.WriteLine();
+                }
             }
 
             Console.WriteLine();

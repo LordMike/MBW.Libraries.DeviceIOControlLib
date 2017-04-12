@@ -1,4 +1,3 @@
-using System.Text;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.Storage;
 using DeviceIOControlLib.Utilities;
@@ -42,7 +41,7 @@ namespace DeviceIOControlLib.Wrapper
             returnValue.BusType = descriptor.BusType;
             returnValue.RawPropertiesLength = descriptor.RawPropertiesLength;
             returnValue.RawDeviceProperties = descriptor.RawDeviceProperties;
-            returnValue.SerialNumber = Utils.ReadNullTerminatedString(res, (int)descriptor.SerialNumberOffset, Encoding.ASCII);
+            returnValue.SerialNumber = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.SerialNumberOffset);
 
             return returnValue;
         }
