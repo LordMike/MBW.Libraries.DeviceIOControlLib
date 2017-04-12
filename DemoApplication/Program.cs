@@ -11,6 +11,7 @@ using System.Threading;
 using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
+using DeviceIOControlLib.Objects.MountManager;
 using DeviceIOControlLib.Objects.Usn;
 using DeviceIOControlLib.Wrapper;
 using Microsoft.Win32.SafeHandles;
@@ -44,6 +45,9 @@ namespace DemoApplication
 
         private static void Main()
         {
+            // Read mount points
+            ExampleMountManager();
+
             // Read USN Journal
             ExampleUsnJournal();
 
@@ -100,6 +104,46 @@ namespace DemoApplication
                 Console.WriteLine("MaxUsn #: {0:N0}", data.MaxUsn.Usn);
                 Console.WriteLine("MaximumSize: {0:N0}", data.MaximumSize);
                 Console.WriteLine("AllocationDelta: {0:N0}", data.AllocationDelta);
+            }
+
+            Console.WriteLine();
+        }
+
+        private static void ExampleMountManager()
+        {
+            const string device = @"\\.\MountPointManager";
+
+            Console.WriteLine(@"## Exmaple on {0} ##", device);
+            SafeFileHandle deviceHandle = CreateFile(device, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (deviceHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", device, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            using (MountManagerWrapper mountManager = new MountManagerWrapper(deviceHandle, true))
+            {
+                List<MountPoint> mountPoints = mountManager.MountQueryPoints();
+
+                foreach (MountPoint mountPoint in mountPoints)
+                {
+                    Console.WriteLine("Mount point:");
+                    Console.WriteLine($"- Device Name: {mountPoint.DeviceName}");
+                    Console.WriteLine($"- Symbolic link name: {mountPoint.SymbolicLinkName}");
+                    Console.WriteLine($"- Device ID: {BitConverter.ToString(mountPoint.UniqueId).Replace("-", "")}");
+
+                    List<string> volumePaths = mountManager.QueryDosVolumePaths(mountPoint.DeviceName);
+
+                    Console.WriteLine($"- Paths ({volumePaths.Count:N0}): ");
+                    foreach (string volumePath in volumePaths)
+                        Console.WriteLine($"- Path: {volumePath}");
+
+                    Console.WriteLine();
+                }
             }
 
             Console.WriteLine();
