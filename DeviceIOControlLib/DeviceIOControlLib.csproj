@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Description>Library to interact with Windows' DeviceIoControl method</Description>
     <AssemblyTitle>DeviceIOControlLib</AssemblyTitle>
-    <Version>0.1.2</Version>
+    <Version>0.1.3</Version>
     <Authors>LordMike</Authors>
     <TargetFrameworks>net20;net35;net40;netstandard1.3</TargetFrameworks>
     <PublicSign>true</PublicSign>
