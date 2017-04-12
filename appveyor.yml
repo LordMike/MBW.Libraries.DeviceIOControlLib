@@ -3,7 +3,7 @@ build_script:
 - ps: >-
     [xml]$doc = (Get-Content .\DeviceIOControlLib\DeviceIOControlLib.csproj)
 
-    [string]$version = $doc.Project.PropertyGroup.VersionPrefix
+    [string]$version = $doc.Project.PropertyGroup.Version
     
     Update-AppveyorBuild -Version "$($version.Trim()).$env:APPVEYOR_BUILD_NUMBER"
 - ps: # Library
