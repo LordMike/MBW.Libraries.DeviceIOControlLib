@@ -1,5 +1,3 @@
-using System;
-
 namespace DeviceIOControlLib.Objects.MountManager
 {
     public class MountPoint
