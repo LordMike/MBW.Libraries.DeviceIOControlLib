@@ -44,6 +44,9 @@ namespace DemoApplication
 
         private static void Main()
         {
+            // Read mount points
+            ExampleMountManager();
+
             // Read USN Journal
             ExampleUsnJournal();
 
@@ -100,6 +103,48 @@ namespace DemoApplication
                 Console.WriteLine("MaxUsn #: {0:N0}", data.MaxUsn.Usn);
                 Console.WriteLine("MaximumSize: {0:N0}", data.MaximumSize);
                 Console.WriteLine("AllocationDelta: {0:N0}", data.AllocationDelta);
+            }
+
+            Console.WriteLine();
+        }
+
+        private static void ExampleMountManager()
+        {
+            const string device = @"\\.\MountPointManager";
+
+            Console.WriteLine(@"## Exmaple on {0} ##", device);
+            SafeFileHandle deviceHandle = CreateFile(device, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (deviceHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", device, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            using (MountManagerWrapper mountManager = new MountManagerWrapper(deviceHandle, true))
+            {
+                var xx = mountManager.MountQueryPoints();
+
+                //DISK_GEOMETRY_EX info = mountManager.DiskGetDriveGeometryEx();
+
+                //Console.WriteLine("Sector size: " + info.Geometry.BytesPerSector);
+
+                //switch (info.PartitionInformation.PartitionStyle)
+                //{
+                //    case PartitionStyle.PARTITION_STYLE_MBR:
+                //        Console.WriteLine("MBR Id: " + info.PartitionInformation.MbrSignature);
+                //        break;
+                //    case PartitionStyle.PARTITION_STYLE_GPT:
+                //        Console.WriteLine("GPT GUID: " + info.PartitionInformation.GptGuidId);
+                //        break;
+                //}
+
+                //PARTITION_INFORMATION_EX partitionInfo = mountManager.DiskGetPartitionInfoEx();
+
+                //Console.WriteLine("Partition style: " + partitionInfo.PartitionStyle);
             }
 
             Console.WriteLine();

@@ -165,6 +165,24 @@ namespace DeviceIOControlLib.Objects.Enums
         VideoQueryDisplayBrightness = (IOFileDevice.Video << 16) | (0x0126 << 2) | IOMethod.Buffered | (0 << 14),
         VideoSetDisplayBrightness = (IOFileDevice.Video << 16) | (0x0127 << 2) | IOMethod.Buffered | (0 << 14),
         // Volume (Disk Volumes)
-        VolumeGetVolumeDiskExtents = (IOFileDevice.Volume << 16) | (0 << 2) | IOMethod.Buffered | (0 << 14)
+        VolumeGetVolumeDiskExtents = (IOFileDevice.Volume << 16) | (0 << 2) | IOMethod.Buffered | (0 << 14),
+        // Mount management
+        MountmgrCreatePoint = (IOFileDevice.MountMgr << 16) | (0 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrDeletePoints = (IOFileDevice.MountMgr << 16) | (1 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrQueryPoints = (IOFileDevice.MountMgr << 16) | (2 << 2) | IOMethod.Buffered | (0 << 14),
+        MountmgrDeletePointsDbonly = (IOFileDevice.MountMgr << 16) | (3 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrNextDriveLetter = (IOFileDevice.MountMgr << 16) | (4 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrAutoDlAssignments = (IOFileDevice.MountMgr << 16) | (5 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrVolumeMountPointCreated = (IOFileDevice.MountMgr << 16) | (6 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrVolumeMountPointDeleted = (IOFileDevice.MountMgr << 16) | (7 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrChangeNotify = (IOFileDevice.MountMgr << 16) | (8 << 2) | IOMethod.Buffered | (FileAccess.Read << 14),
+        MountmgrKeepLinksWhenOffline = (IOFileDevice.MountMgr << 16) | (9 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrCheckUnprocessedVolumes = (IOFileDevice.MountMgr << 16) | (10 << 2) | IOMethod.Buffered | (FileAccess.Read << 14),
+        MountmgrVolumeArrivalNotification = (IOFileDevice.MountMgr << 16) | (11 << 2) | IOMethod.Buffered | (FileAccess.Read << 14),
+        MountmgrQueryDosVolumePath = (IOFileDevice.MountMgr << 16) | (12 << 2) | IOMethod.Buffered | (0 << 14),
+        MountmgrQueryDosVolumePaths = (IOFileDevice.MountMgr << 16) | (13 << 2) | IOMethod.Buffered | (0 << 14),
+        MountmgrScrubRegistry = (IOFileDevice.MountMgr << 16) | (14 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
+        MountmgrQueryAutoMount = (IOFileDevice.MountMgr << 16) | (15 << 2) | IOMethod.Buffered | (0 << 14),
+        MountmgrSetAutoMount = (IOFileDevice.MountMgr << 16) | (16 << 2) | IOMethod.Buffered | (FileAccess.ReadWrite << 14),
     }
 }

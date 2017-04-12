@@ -73,6 +73,9 @@ namespace DeviceIOControlLib.Objects.Enums
         MtTransport = 0x00000043,
         Biometric = 0x00000044,
         Pmi = 0x00000045,
-        Volume = 0x00000056
+        Volume = 0x00000056,
+
+        // Elsewhere
+        MountMgr = 0x0000006D
     }
 }
