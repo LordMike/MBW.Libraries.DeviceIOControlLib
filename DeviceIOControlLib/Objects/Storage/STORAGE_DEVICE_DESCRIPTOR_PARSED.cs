@@ -22,5 +22,8 @@ namespace DeviceIOControlLib.Objects.Storage
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x16)]
         public byte[] RawDeviceProperties;
         public string SerialNumber;
+        public string VendorId;
+        public string ProductId;
+        public string ProductRevision;
     }
 }

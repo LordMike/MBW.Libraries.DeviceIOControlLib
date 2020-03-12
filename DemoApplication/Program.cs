@@ -12,6 +12,7 @@ using DeviceIOControlLib.Objects.Disk;
 using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.FileSystem;
 using DeviceIOControlLib.Objects.MountManager;
+using DeviceIOControlLib.Objects.Storage;
 using DeviceIOControlLib.Objects.Usn;
 using DeviceIOControlLib.Wrapper;
 using Microsoft.Win32.SafeHandles;
@@ -47,6 +48,9 @@ namespace DemoApplication
         {
             // Read mount points
             ExampleMountManager();
+
+            // Read physical drive
+            ExamplePhysicalDrive();
 
             // Read USN Journal
             ExampleUsnJournal();
@@ -553,6 +557,50 @@ namespace DemoApplication
 
             Console.WriteLine("Done... ");
             Console.ReadLine();
+            Console.WriteLine();
+        }
+
+        private static void ExamplePhysicalDrive()
+        {
+            const string drive = @"\\.\PhysicalDrive0";
+
+            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            SafeFileHandle diskHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
+
+            if (diskHandle.IsInvalid)
+            {
+                int lastError = Marshal.GetLastWin32Error();
+
+                Console.WriteLine(@"!! Invalid {0}; Error ({1}): {2}", drive, lastError, new Win32Exception(lastError).Message);
+                Console.WriteLine();
+                return;
+            }
+
+            using (StorageDeviceWrapper storageIo = new StorageDeviceWrapper(diskHandle, true))
+            {
+                // Get info
+                STORAGE_DEVICE_DESCRIPTOR_PARSED prop = storageIo.StorageGetDeviceProperty();
+
+                Console.WriteLine(prop.BusType);
+
+                Console.WriteLine("Version: " + prop.Version);
+                Console.WriteLine("Size: " + prop.Size);
+                Console.WriteLine("DeviceType: " + prop.DeviceType);
+                Console.WriteLine("DeviceTypeModifier: " + prop.DeviceTypeModifier);
+                Console.WriteLine("RemovableMedia: " + prop.RemovableMedia);
+                Console.WriteLine("CommandQueueing: " + prop.CommandQueueing);
+                Console.WriteLine("VendorIdOffset: " + prop.VendorIdOffset);
+                Console.WriteLine("ProductIdOffset: " + prop.ProductIdOffset);
+                Console.WriteLine("ProductRevisionOffset: " + prop.ProductRevisionOffset);
+                Console.WriteLine("SerialNumberOffset: " + prop.SerialNumberOffset);
+                Console.WriteLine("BusType: " + prop.BusType);
+                Console.WriteLine("RawPropertiesLength: " + prop.RawPropertiesLength);
+                Console.WriteLine("SerialNumber: " + prop.SerialNumber?.Trim());
+                Console.WriteLine("ProductId: " + prop.ProductId?.Trim());
+                Console.WriteLine("VendorId: " + prop.VendorId?.Trim());
+                Console.WriteLine("ProductRevision: " + prop.ProductRevision?.Trim());
+            }
+
             Console.WriteLine();
         }
 

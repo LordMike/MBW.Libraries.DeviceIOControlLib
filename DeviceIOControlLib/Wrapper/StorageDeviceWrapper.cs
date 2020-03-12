@@ -41,7 +41,18 @@ namespace DeviceIOControlLib.Wrapper
             returnValue.BusType = descriptor.BusType;
             returnValue.RawPropertiesLength = descriptor.RawPropertiesLength;
             returnValue.RawDeviceProperties = descriptor.RawDeviceProperties;
-            returnValue.SerialNumber = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.SerialNumberOffset);
+
+            if (descriptor.SerialNumberOffset > 0)
+                returnValue.SerialNumber = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.SerialNumberOffset);
+
+            if (descriptor.VendorIdOffset > 0)
+                returnValue.VendorId = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.VendorIdOffset);
+
+            if (descriptor.ProductIdOffset > 0)
+                returnValue.ProductId = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.ProductIdOffset);
+
+            if (descriptor.ProductRevisionOffset > 0)
+                returnValue.ProductRevision = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.ProductRevisionOffset);
 
             return returnValue;
         }
