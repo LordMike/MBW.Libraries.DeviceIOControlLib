@@ -216,7 +216,7 @@ namespace DeviceIOControlLib.Wrapper
 
             // Ensure the last call to InvokeIoControl succeeded.
             if (lastError != 0)
-                throw new Win32Exception("Couldn't invoke FileSystemGetVolumeBitmap. LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                throw new Win32Exception(lastError, "Couldn't invoke FileSystemGetVolumeBitmap. LastError: " + Utils.GetWin32ErrorMessage(lastError));
 
             // Build the VOLUME_BITMAP_BUFFER structure.
             VOLUME_BITMAP_BUFFER res = new VOLUME_BITMAP_BUFFER();

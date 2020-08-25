@@ -59,7 +59,7 @@ namespace DeviceIOControlLib.Wrapper
             if (!success)
             {
                 int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
 
             return output;
@@ -97,7 +97,7 @@ namespace DeviceIOControlLib.Wrapper
             if (!success)
             {
                 int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
 
             return (T)output;
@@ -119,7 +119,7 @@ namespace DeviceIOControlLib.Wrapper
             if (!success)
             {
                 int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
 
             return (T)output;
@@ -138,7 +138,7 @@ namespace DeviceIOControlLib.Wrapper
             if (!success)
             {
                 int lastError = Marshal.GetLastWin32Error();
-                throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
         }
 
@@ -188,7 +188,7 @@ namespace DeviceIOControlLib.Wrapper
                         continue;
                     }
 
-                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                    throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
                 }
 
                 // Return the result
@@ -237,7 +237,7 @@ namespace DeviceIOControlLib.Wrapper
                         continue;
                     }
 
-                    throw new Win32Exception("Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                    throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
                 }
 
                 // Return the result
