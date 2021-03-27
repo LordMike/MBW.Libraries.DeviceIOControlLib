@@ -1,5 +1,6 @@
-DeviceIOControlLib
+DeviceIOControlLib [![Generic Build](https://github.com/LordMike/MBW.Libraries.DeviceIOControlLib/actions/workflows/dotnet.yml/badge.svg)](https://github.com/LordMike/MBW.Libraries.DeviceIOControlLib/actions/workflows/dotnet.yml) [![Nuget](https://img.shields.io/nuget/v/DeviceIOControlLib)](https://www.nuget.org/packages/DeviceIOControlLib)
 ==================
+
 A C# Library to work with the Win32 DeviceIOControl method
 
 Reasons
@@ -61,13 +62,13 @@ A simple scenario is to open the CD-ROM tray. First we need a handle to the CD-R
         }
     }
 
-In the code above, we have all the boilerplate as well (such as the CreateFile DLL import from [pinvoke.net][3]). After we get the handle, we use it in the DeviceIOControlWrapper, and simple call some Storage methods on it. For CD drives, we can eject and 'load' media. I do that, and voilà, CD tray opens and closes.
+In the code above, we have all the boilerplate as well (such as the CreateFile DLL import from [pinvoke.net][3]). After we get the handle, we use it in the DeviceIOControlWrapper, and simple call some Storage methods on it. For CD drives, we can eject and 'load' media. I do that, and voilÃ , CD tray opens and closes.
 
 ----------
 
 **Reading out information about hard drives**
 
-The thing that got me started, was reading out sector sizes. So, let’s do that. Working from code above, we open a handle to PhysicalDriveN instead (all hard drives attached are mapped this way).
+The thing that got me started, was reading out sector sizes. So, letâ€™s do that. Working from code above, we open a handle to PhysicalDriveN instead (all hard drives attached are mapped this way).
 
     SafeFileHandle safeHandle = CreateFile(@"\\.\PhysicalDrive0", FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
