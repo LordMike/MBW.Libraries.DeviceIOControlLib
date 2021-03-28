@@ -8,8 +8,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DemoApplication", "DemoAppl
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "_Imports", "_Imports", "{7E125680-25C4-4C18-B578-38F1EAD6A66D}"
 	ProjectSection(SolutionItems) = preProject
-		..\RawDiskLib\_Imports\Local.targets = ..\RawDiskLib\_Imports\Local.targets
-		..\RawDiskLib\_Imports\Test.targets = ..\RawDiskLib\_Imports\Test.targets
+		_Imports\Local.targets = _Imports\Local.targets
+		_Imports\Test.targets = _Imports\Test.targets
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{610ABF08-C583-4AA8-AF21-827BD7120B9E}"

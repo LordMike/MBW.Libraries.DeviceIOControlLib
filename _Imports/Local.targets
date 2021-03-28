@@ -3,11 +3,11 @@
   <!-- Package -->
   <PropertyGroup>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/LordMike/RawDiskLib</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/LordMike/MBW.Libraries.DeviceIOControlLib</PackageProjectUrl>
   </PropertyGroup>
   
   <PropertyGroup>
-    <RepositoryUrl>https://github.com/LordMike/RawDiskLib</RepositoryUrl>
+    <RepositoryUrl>https://github.com/LordMike/MBW.Libraries.DeviceIOControlLib</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
   
