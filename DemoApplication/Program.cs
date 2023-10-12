@@ -85,7 +85,7 @@ namespace DemoApplication
         {
             const string drive = @"\\.\C:";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            Console.WriteLine(@"## Example on {0} ##", drive);
             SafeFileHandle hddHandle = CreateFile(drive, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (hddHandle.IsInvalid)
@@ -117,7 +117,7 @@ namespace DemoApplication
         {
             const string device = @"\\.\MountPointManager";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", device);
+            Console.WriteLine(@"## Example on {0} ##", device);
             SafeFileHandle deviceHandle = CreateFile(device, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (deviceHandle.IsInvalid)
@@ -157,7 +157,7 @@ namespace DemoApplication
         {
             const string drive = @"\\.\PhysicalDrive0";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            Console.WriteLine(@"## Example on {0} ##", drive);
             SafeFileHandle hddHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (hddHandle.IsInvalid)
@@ -197,7 +197,7 @@ namespace DemoApplication
         {
             const string drive = @"\\.\C:";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            Console.WriteLine(@"## Example on {0} ##", drive);
             SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
@@ -308,7 +308,7 @@ namespace DemoApplication
             const string file = @"C:\Windows\system32\cmd.exe";
             string drive = @"\\.\" + Directory.GetDirectoryRoot(file).Substring(0, 2);
 
-            Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", file, drive);
+            Console.WriteLine(@"## Example on {0} on drive {1} ##", file, drive);
 
             // Open file to defragment
             SafeFileHandle fileHandle = CreateFile(file, FileAccess.Read, FileShare.ReadWrite, IntPtr.Zero,
@@ -416,7 +416,7 @@ namespace DemoApplication
             const string dir = @"C:\Windows";
             string drive = @"\\.\" + Directory.GetDirectoryRoot(dir).Substring(0, 2);
 
-            Console.WriteLine(@"## Exmaple on {0} on drive {1} ##", dir, drive);
+            Console.WriteLine(@"## Example on {0} on drive {1} ##", dir, drive);
 
             // Open volume to defragment on
             SafeFileHandle driveHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero,
@@ -608,7 +608,7 @@ namespace DemoApplication
         {
             const string drive = @"\\.\CdRom0";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            Console.WriteLine(@"## Example on {0} ##", drive);
             SafeFileHandle cdTrayHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (cdTrayHandle.IsInvalid)
@@ -643,7 +643,7 @@ namespace DemoApplication
         {
             const string drive = @"\\.\C:";
 
-            Console.WriteLine(@"## Exmaple on {0} ##", drive);
+            Console.WriteLine(@"## Example on {0} ##", drive);
             SafeFileHandle volumeHandle = CreateFile(drive, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
             if (volumeHandle.IsInvalid)
@@ -710,7 +710,7 @@ namespace DemoApplication
                     fs.Write(data, 0, data.Length);
                 }
 
-                Console.WriteLine(@"## Exmaple with {0} ##", file);
+                Console.WriteLine(@"## Example with {0} ##", file);
                 SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
                 if (fileHandle.IsInvalid)
@@ -775,7 +775,7 @@ namespace DemoApplication
                     }
                 }
 
-                Console.WriteLine(@"## Exmaple with {0} ##", file);
+                Console.WriteLine(@"## Example with {0} ##", file);
                 SafeFileHandle fileHandle = CreateFile(file, FileAccess.ReadWrite, FileShare.ReadWrite, IntPtr.Zero, FileMode.Open, FileAttributes.Normal, IntPtr.Zero);
 
                 if (fileHandle.IsInvalid)
