@@ -2,6 +2,8 @@ using DeviceIOControlLib.Objects.Enums;
 using DeviceIOControlLib.Objects.Storage;
 using DeviceIOControlLib.Utilities;
 using Microsoft.Win32.SafeHandles;
+using System;
+using System.Runtime.InteropServices;
 
 namespace DeviceIOControlLib.Wrapper
 {
@@ -17,7 +19,7 @@ namespace DeviceIOControlLib.Wrapper
         //StorageCheckVerify2
         //StorageMediaRemoval
 
-        public STORAGE_DEVICE_DESCRIPTOR_PARSED StorageGetDeviceProperty()
+        public unsafe STORAGE_DEVICE_DESCRIPTOR_PARSED StorageGetDeviceProperty()
         {
             STORAGE_PROPERTY_QUERY query = new STORAGE_PROPERTY_QUERY();
             query.QueryType = STORAGE_QUERY_TYPE.PropertyStandardQuery;
@@ -40,7 +42,7 @@ namespace DeviceIOControlLib.Wrapper
             returnValue.SerialNumberOffset = descriptor.SerialNumberOffset;
             returnValue.BusType = descriptor.BusType;
             returnValue.RawPropertiesLength = descriptor.RawPropertiesLength;
-            returnValue.RawDeviceProperties = descriptor.RawDeviceProperties;
+            Buffer.MemoryCopy(descriptor.RawDeviceProperties, returnValue.RawDeviceProperties, 0x16, 0x16);
 
             if (descriptor.SerialNumberOffset > 0)
                 returnValue.SerialNumber = Utils.ReadNullTerminatedAsciiString(res, (int)descriptor.SerialNumberOffset);

@@ -57,9 +57,16 @@ namespace DeviceIOControlLib.Wrapper
         //DiskSetPartitionInfoEx
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365173(v=vs.85).aspx"/></summary>
-        public DRIVE_LAYOUT_INFORMATION DiskGetDriveLayout()
+        public unsafe DRIVE_LAYOUT_INFORMATION DiskGetDriveLayout()
         {
-            DRIVE_LAYOUT_INFORMATION_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayout);
+            byte[] outputBytes = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.DiskGetDriveLayoutEx,
+                (uint)sizeof(DRIVE_LAYOUT_INFORMATION_INTERNAL) + 128 * (uint)sizeof(PARTITION_INFORMATION));
+
+            DRIVE_LAYOUT_INFORMATION_INTERNAL data;
+            fixed (byte* outputPtr = outputBytes)
+            {
+                data = MarshalHelper.ToStructure<DRIVE_LAYOUT_INFORMATION_INTERNAL>(new IntPtr(outputPtr));
+            }
 
             DRIVE_LAYOUT_INFORMATION res = new DRIVE_LAYOUT_INFORMATION();
 
@@ -67,16 +74,28 @@ namespace DeviceIOControlLib.Wrapper
             res.Signature = data.Signature;
             res.PartitionEntry = new PARTITION_INFORMATION[res.PartitionCount];
 
-            for (int i = 0; i < res.PartitionCount; i++)
-                res.PartitionEntry[i] = data.PartitionEntry[i];
+            fixed (byte* outputPtr = outputBytes)
+            {
+                PARTITION_INFORMATION* partitionPtr = (PARTITION_INFORMATION*)
+                    (outputPtr + sizeof(DRIVE_LAYOUT_INFORMATION_INTERNAL));
+                for (int i = 0; i < res.PartitionCount; i++)
+                    res.PartitionEntry[i] = *partitionPtr++;
+            }
 
             return res;
         }
 
         /// <summary><see cref="http://msdn.microsoft.com/en-us/library/windows/desktop/aa365174(v=vs.85).aspx"/></summary>
-        public DRIVE_LAYOUT_INFORMATION_EX DiskGetDriveLayoutEx()
+        public unsafe DRIVE_LAYOUT_INFORMATION_EX DiskGetDriveLayoutEx()
         {
-            DRIVE_LAYOUT_INFORMATION_EX_INTERNAL data = DeviceIoControlHelper.InvokeIoControl<DRIVE_LAYOUT_INFORMATION_EX_INTERNAL>(Handle, IOControlCode.DiskGetDriveLayoutEx);
+            byte[] outputBytes = DeviceIoControlHelper.InvokeIoControl(Handle, IOControlCode.DiskGetDriveLayoutEx, 
+                (uint)sizeof(DRIVE_LAYOUT_INFORMATION_EX_INTERNAL) + 128 * (uint)sizeof(PARTITION_INFORMATION_EX));
+
+            DRIVE_LAYOUT_INFORMATION_EX_INTERNAL data;
+            fixed (byte* outputPtr = outputBytes) 
+            {
+                data = MarshalHelper.ToStructure<DRIVE_LAYOUT_INFORMATION_EX_INTERNAL>(new IntPtr(outputPtr));
+            }
 
             DRIVE_LAYOUT_INFORMATION_EX res = new DRIVE_LAYOUT_INFORMATION_EX();
 
@@ -85,8 +104,13 @@ namespace DeviceIOControlLib.Wrapper
             res.DriveLayoutInformaiton = data.DriveLayoutInformaiton;
             res.PartitionEntry = new PARTITION_INFORMATION_EX[res.PartitionCount];
 
-            for (int i = 0; i < res.PartitionCount; i++)
-                res.PartitionEntry[i] = data.PartitionEntry[i];
+            fixed(byte* outputPtr = outputBytes)
+            {
+                PARTITION_INFORMATION_EX* partitionPtr = (PARTITION_INFORMATION_EX*)
+                    (outputPtr + sizeof(DRIVE_LAYOUT_INFORMATION_EX_INTERNAL));
+                for (int i = 0; i < res.PartitionCount; i++)
+                    res.PartitionEntry[i] = *partitionPtr++;
+            }
 
             return res;
         }

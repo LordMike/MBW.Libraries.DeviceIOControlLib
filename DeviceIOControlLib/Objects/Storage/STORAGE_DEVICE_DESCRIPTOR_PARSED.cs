@@ -3,7 +3,7 @@
 namespace DeviceIOControlLib.Objects.Storage
 {
     [StructLayout(LayoutKind.Sequential)]
-    public struct STORAGE_DEVICE_DESCRIPTOR_PARSED
+    public unsafe struct STORAGE_DEVICE_DESCRIPTOR_PARSED
     {
         public uint Version;
         public uint Size;
@@ -20,7 +20,7 @@ namespace DeviceIOControlLib.Objects.Storage
         public STORAGE_BUS_TYPE BusType;
         public uint RawPropertiesLength;
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 0x16)]
-        public byte[] RawDeviceProperties;
+        public fixed byte RawDeviceProperties[0x16];
         public string SerialNumber;
         public string VendorId;
         public string ProductId;

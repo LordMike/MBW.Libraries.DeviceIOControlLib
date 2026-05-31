@@ -5,7 +5,7 @@ using DeviceIOControlLib.Objects.Enums;
 namespace DeviceIOControlLib.Objects.Disk
 {
     [StructLayout(LayoutKind.Explicit, CharSet = CharSet.Unicode)]
-    public struct PARTITION_INFORMATION_GPT
+    public unsafe struct PARTITION_INFORMATION_GPT
     {
         [FieldOffset(0)]
         public Guid PartitionType;
@@ -15,7 +15,6 @@ namespace DeviceIOControlLib.Objects.Disk
         [MarshalAs(UnmanagedType.U8)]
         public EFIPartitionAttributes Attributes;
         [FieldOffset(40)]
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 36)]
-        public string Name;
+        public fixed char Name[36];
     }
 }

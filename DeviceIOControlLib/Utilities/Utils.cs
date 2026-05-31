@@ -12,7 +12,7 @@ namespace DeviceIOControlLib.Utilities
             return new Win32Exception(errorCode).Message;
         }
 
-        public static T ByteArrayToStruct<T>(byte[] data, int index) where T : struct
+        public static T ByteArrayToStruct<T>(byte[] data, int index) where T : unmanaged
         {
             using (UnmanagedMemory mem = new UnmanagedMemory(data.Length - index))
             {

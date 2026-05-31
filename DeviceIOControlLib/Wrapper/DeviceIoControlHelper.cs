@@ -7,29 +7,16 @@ using Microsoft.Win32.SafeHandles;
 
 namespace DeviceIOControlLib.Wrapper
 {
-    public static class DeviceIoControlHelper
+    public static partial class DeviceIoControlHelper
     {
-        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool DeviceIoControl(
-            SafeFileHandle hDevice,
-            IOControlCode IoControlCode,
-            [MarshalAs(UnmanagedType.AsAny)]
-            [In] object InBuffer,
-            uint nInBufferSize,
-            [MarshalAs(UnmanagedType.AsAny)]
-            [Out] object OutBuffer,
-            uint nOutBufferSize,
-            ref uint pBytesReturned,
-            [In] IntPtr Overlapped
-            );
-
-        [DllImport("Kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
-        private static extern bool DeviceIoControl(
+        [LibraryImport("Kernel32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static partial bool DeviceIoControl(
             SafeFileHandle hDevice,
             IOControlCode ioControlCode,
-            byte[] inBuffer,
+            IntPtr inBuffer,
             uint nInBufferSize,
-            byte[] outBuffer,
+            IntPtr outBuffer,
             uint nOutBufferSize,
             ref uint pBytesReturned,
             IntPtr overlapped
@@ -43,18 +30,22 @@ namespace DeviceIOControlLib.Wrapper
         {
             uint returnedBytes = 0;
 
-            return DeviceIoControl(handle, controlCode, null, 0, null, 0, ref returnedBytes, IntPtr.Zero);
+            return DeviceIoControl(handle, controlCode, IntPtr.Zero, 0, IntPtr.Zero, 0, ref returnedBytes, IntPtr.Zero);
         }
 
         /// <summary>
         /// Invoke DeviceIOControl with no input, and retrieve the output in the form of a byte array.
         /// </summary>
-        public static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength)
+        public unsafe static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength)
         {
+            bool success;
             uint returnedBytes = 0;
 
             byte[] output = new byte[outputLength];
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
+            fixed (byte* outputPtr = output)
+            {
+                success = DeviceIoControl(handle, controlCode, IntPtr.Zero, 0, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+            }
 
             if (!success)
             {
@@ -68,12 +59,16 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Invoke DeviceIOControl with no input, and retrieve the output in the form of a byte array. Lets the caller handle the errorcode (if any).
         /// </summary>
-        public static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, out int errorCode)
+        public unsafe static byte[] InvokeIoControl(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, out int errorCode)
         {
+            bool success;
             uint returnedBytes = 0;
 
             byte[] output = new byte[outputLength];
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
+            fixed (byte* outputPtr = output)
+            {
+                success = DeviceIoControl(handle, controlCode, IntPtr.Zero, 0, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+            }
 
             errorCode = 0;
 
@@ -86,13 +81,14 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Invoke DeviceIOControl with no input, and retrieve the output in the form of an object of type T.
         /// </summary>
-        public static T InvokeIoControl<T>(SafeFileHandle handle, IOControlCode controlCode)
+        public unsafe static T InvokeIoControl<T>(SafeFileHandle handle, IOControlCode controlCode) 
+            where T : unmanaged
         {
             uint returnedBytes = 0;
 
-            object output = default(T);
+            T output = default;
             uint outputSize = MarshalHelper.SizeOf<T>();
-            bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputSize, ref returnedBytes, IntPtr.Zero);
+            bool success = DeviceIoControl(handle, controlCode, IntPtr.Zero, 0, new IntPtr(&output), outputSize, ref returnedBytes, IntPtr.Zero);
 
             if (!success)
             {
@@ -100,21 +96,23 @@ namespace DeviceIOControlLib.Wrapper
                 throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
 
-            return (T)output;
+            return output;
         }
 
         /// <summary>
         /// Invoke DeviceIOControl with input of type V, and retrieve the output in the form of an object of type T.
         /// </summary>
-        public static T InvokeIoControl<T, V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+        public unsafe static T InvokeIoControl<T, V>(SafeFileHandle handle, IOControlCode controlCode, V input) 
+            where T : unmanaged 
+            where V : unmanaged
         {
             uint returnedBytes = 0;
 
-            object output = default(T);
+            T output = default;
             uint outputSize = MarshalHelper.SizeOf<T>();
 
             uint inputSize = MarshalHelper.SizeOf<V>();
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputSize, ref returnedBytes, IntPtr.Zero);
+            bool success = DeviceIoControl(handle, controlCode, new IntPtr(&input), inputSize, new IntPtr(&output), outputSize, ref returnedBytes, IntPtr.Zero);
 
             if (!success)
             {
@@ -122,18 +120,19 @@ namespace DeviceIOControlLib.Wrapper
                 throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
             }
 
-            return (T)output;
+            return output;
         }
 
         /// <summary>
         /// Invoke DeviceIOControl with input of type V, and retrieves no output.
         /// </summary>
-        public static void InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+        public unsafe static void InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, V input)
+            where V : unmanaged
         {
             uint returnedBytes = 0;
 
             uint inputSize = MarshalHelper.SizeOf<V>();
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, null, 0, ref returnedBytes, IntPtr.Zero);
+            bool success = DeviceIoControl(handle, controlCode, new IntPtr(&input), inputSize, IntPtr.Zero, 0, ref returnedBytes, IntPtr.Zero);
 
             if (!success)
             {
@@ -145,15 +144,20 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Calls InvokeIoControl with the specified input, returning a byte array. It allows the caller to handle errors.
         /// </summary>
-        public static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
+        public unsafe static byte[] InvokeIoControl<V>(SafeFileHandle handle, IOControlCode controlCode, uint outputLength, V input, out int errorCode)
+            where V : unmanaged
         {
+            bool success;
             uint returnedBytes = 0;
             uint inputSize = MarshalHelper.SizeOf<V>();
 
             errorCode = 0;
-            byte[] output = new byte[outputLength];
 
-            bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
+            byte[] output = new byte[outputLength];
+            fixed (byte* outputPtr = output)
+            {
+                success = DeviceIoControl(handle, controlCode, new IntPtr(&input), inputSize, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+            }
 
             if (!success)
             {
@@ -166,16 +170,21 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Repeatedly invokes InvokeIoControl, as long as it gets return code 234 ("More data available") from the method.
         /// </summary>
-        public static byte[] InvokeIoControlUnknownSize(SafeFileHandle handle, IOControlCode controlCode, uint increment = 128)
+        public unsafe static byte[] InvokeIoControlUnknownSize(SafeFileHandle handle, IOControlCode controlCode, uint increment = 128)
         {
             uint returnedBytes = 0;
 
             uint outputLength = increment;
 
+            byte[] output = new byte[outputLength];
+
             do
             {
-                byte[] output = new byte[outputLength];
-                bool success = DeviceIoControl(handle, controlCode, null, 0, output, outputLength, ref returnedBytes, IntPtr.Zero);
+                bool success;
+                fixed(byte* outputPtr = output)
+                {
+                    success = DeviceIoControl(handle, controlCode, IntPtr.Zero, 0, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+                }
 
                 if (!success)
                 {
@@ -205,7 +214,8 @@ namespace DeviceIOControlLib.Wrapper
         /// <summary>
         /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
         /// </summary>
-        public static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128, uint inputSizeOverride = 0)
+        public unsafe static byte[] InvokeIoControlUnknownSize<V>(SafeFileHandle handle, IOControlCode controlCode, V input, uint increment = 128, uint inputSizeOverride = 0)
+            where V : unmanaged
         {
             uint returnedBytes = 0;
 
@@ -221,10 +231,15 @@ namespace DeviceIOControlLib.Wrapper
                 inputSize = MarshalHelper.SizeOf<V>();
             }
 
+            byte[] output = new byte[outputLength];
+
             do
             {
-                byte[] output = new byte[outputLength];
-                bool success = DeviceIoControl(handle, controlCode, input, inputSize, output, outputLength, ref returnedBytes, IntPtr.Zero);
+                bool success;
+                fixed(byte* outputPtr = output)
+                {
+                    success = DeviceIoControl(handle, controlCode, new IntPtr(&input), inputSize, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+                }
 
                 if (!success)
                 {
@@ -251,5 +266,50 @@ namespace DeviceIOControlLib.Wrapper
             } while (true);
         }
 
+        /// <summary>
+        /// Repeatedly invokes InvokeIoControl with the specified input, as long as it gets return code 234 ("More data available") from the method.
+        /// </summary>
+        public unsafe static byte[] InvokeIoControlUnknownSize(SafeFileHandle handle, IOControlCode controlCode, byte[] input, uint increment = 128)
+        {
+            uint returnedBytes = 0;
+
+            uint inputSize = (uint)input.Length;
+            uint outputLength = increment;
+
+            byte[] output = new byte[outputLength];
+
+            do
+            {
+                bool success;
+                fixed (byte* inputPtr = input)
+                fixed (byte* outputPtr = output)
+                {
+                    success = DeviceIoControl(handle, controlCode, new IntPtr(inputPtr), inputSize, new IntPtr(outputPtr), outputLength, ref returnedBytes, IntPtr.Zero);
+                }
+
+                if (!success)
+                {
+                    int lastError = Marshal.GetLastWin32Error();
+
+                    if (lastError == 234)
+                    {
+                        // More data
+                        outputLength += increment;
+                        continue;
+                    }
+
+                    throw new Win32Exception(lastError, "Couldn't invoke DeviceIoControl for " + controlCode + ". LastError: " + Utils.GetWin32ErrorMessage(lastError));
+                }
+
+                // Return the result
+                if (output.Length == returnedBytes)
+                    return output;
+
+                byte[] res = new byte[returnedBytes];
+                Array.Copy(output, res, (int)returnedBytes);
+
+                return res;
+            } while (true);
+        }
     }
 }

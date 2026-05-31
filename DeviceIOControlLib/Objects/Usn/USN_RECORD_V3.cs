@@ -1,18 +1,17 @@
+using System;
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 
 namespace DeviceIOControlLib.Objects.Usn
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct USN_RECORD_V3 : IUSN_RECORD
+    public unsafe struct USN_RECORD_V3 : IUSN_RECORD
     {
         internal uint _recordLength;
         internal ushort _majorVersion;
         internal ushort _minorVersion;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] _fileReferenceNumber;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 16)]
-        public byte[] _parentFileReferenceNumber;
+        public fixed byte _fileReferenceNumber[16];
+        public fixed byte _parentFileReferenceNumber[16];
         public long _usn;
         public ulong _timeStamp;
         public UsnJournalReasonMask _reason;
@@ -21,8 +20,7 @@ namespace DeviceIOControlLib.Objects.Usn
         public FileAttributes _fileAttributes;
         public ushort _fileNameLength;
         public ushort _fileNameOffset;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 1)]
-        public string _fileName;
+        public fixed char _fileName[1];
 
         public uint RecordLength
         {
@@ -41,13 +39,48 @@ namespace DeviceIOControlLib.Objects.Usn
         }
         public byte[] FileReferenceNumber
         {
-            get { return _fileReferenceNumber; }
-            set { _fileReferenceNumber = value; }
+            get
+            {
+                byte[] fileReferenceNumber = new byte[16];
+                fixed (byte* fileReferenceNumberDst = fileReferenceNumber)
+                fixed (byte* fileReferenceNumberSrc = _fileReferenceNumber)
+                {
+                    Buffer.MemoryCopy(fileReferenceNumberSrc, fileReferenceNumberDst, 16, 16);
+                }
+
+                return fileReferenceNumber;
+            }
+            set 
+            {
+                fixed (byte* fileReferenceNumberDst = _fileReferenceNumber)
+                fixed (byte* fileReferenceNumberSrc = value)
+                {
+                    Buffer.MemoryCopy(fileReferenceNumberSrc, fileReferenceNumberDst, 16, 16);
+                }
+            }
         }
+
         public byte[] ParentFileReferenceNumber
         {
-            get { return _parentFileReferenceNumber; }
-            set { _parentFileReferenceNumber = value; }
+            get
+            {
+                byte[] parentFileReferenceNumber = new byte[16];
+                fixed (byte* parentFileReferenceNumberDst = parentFileReferenceNumber)
+                fixed (byte* parentFileReferenceNumberSrc = _parentFileReferenceNumber)
+                {
+                    Buffer.MemoryCopy(parentFileReferenceNumberSrc, parentFileReferenceNumberDst, 16, 16);
+                }
+
+                return parentFileReferenceNumber;
+            }
+            set 
+            {
+                fixed (byte* parentFileReferenceNumberDst = _parentFileReferenceNumber)
+                fixed (byte* parentFileReferenceNumberSrc = value)
+                {
+                    Buffer.MemoryCopy(parentFileReferenceNumberSrc, parentFileReferenceNumberDst, 16, 16);
+                }
+            }
         }
         public USN Usn
         {
@@ -91,8 +124,20 @@ namespace DeviceIOControlLib.Objects.Usn
         }
         public string FileName
         {
-            get { return _fileName; }
-            set { _fileName = value; }
+            get
+            {
+                fixed (char* fileNamePtr = _fileName)
+                {
+                    return new string(fileNamePtr, 0, 1);
+                }
+            }
+            set
+            {
+                fixed (char* fileNamePtr = _fileName)
+                {
+                    fileNamePtr[0] = value[0];
+                }
+            }
         }
     }
 }
