@@ -4,7 +4,7 @@ using DeviceIOControlLib.Objects.Enums;
 namespace DeviceIOControlLib.Objects.Usn
 {
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    public struct USN_RECORD_V2 : IUSN_RECORD
+    public unsafe struct USN_RECORD_V2 : IUSN_RECORD
     {
         private uint _recordLength;
         private ushort _majorVersion;
@@ -19,8 +19,7 @@ namespace DeviceIOControlLib.Objects.Usn
         private FileAttributes _fileAttributes;
         private ushort _fileNameLength;
         private ushort _fileNameOffset;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 1)]
-        private string _fileName;
+        private fixed char _fileName[1];
 
         public uint RecordLength
         {
@@ -89,8 +88,20 @@ namespace DeviceIOControlLib.Objects.Usn
         }
         public string FileName
         {
-            get { return _fileName; }
-            set { _fileName = value; }
+            get 
+            { 
+                fixed(char* fileNamePtr = _fileName)
+                {
+                    return new string(fileNamePtr, 0, 1);
+                }
+            }
+            set 
+            { 
+                fixed(char * fileNamePtr = _fileName)
+                {
+                    fileNamePtr[0] = value[0];
+                }
+            }
         }
     }
 }

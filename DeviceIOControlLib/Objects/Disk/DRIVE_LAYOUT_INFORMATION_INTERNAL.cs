@@ -7,7 +7,5 @@ namespace DeviceIOControlLib.Objects.Disk
     {
         public int PartitionCount;
         public uint Signature;
-        [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.Struct, SizeConst = 128)]
-        public PARTITION_INFORMATION[] PartitionEntry;
     }
 }

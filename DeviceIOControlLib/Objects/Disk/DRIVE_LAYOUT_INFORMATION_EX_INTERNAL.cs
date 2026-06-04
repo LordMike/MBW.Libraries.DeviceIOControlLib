@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using DeviceIOControlLib.Objects.Enums;
 
@@ -10,7 +11,5 @@ namespace DeviceIOControlLib.Objects.Disk
         public PartitionStyle PartitionStyle;
         public int PartitionCount;
         public DRIVE_LAYOUT_INFORMATION_UNION DriveLayoutInformaiton;
-        [MarshalAs(UnmanagedType.ByValArray, ArraySubType = UnmanagedType.Struct, SizeConst = 128)]
-        public PARTITION_INFORMATION_EX[] PartitionEntry;
     }
 }

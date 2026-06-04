@@ -5,22 +5,14 @@ namespace DeviceIOControlLib.Utilities
 {
     internal static class MarshalHelper
     {
-        public static T ToStructure<T>(this IntPtr ptr)
+        public static unsafe T ToStructure<T>(this IntPtr ptr) where T : unmanaged
         {
-#if NETCORE
-            return Marshal.PtrToStructure<T>(ptr);
-#else
-            return (T)Marshal.PtrToStructure(ptr, typeof(T));
-#endif
+            return *(T*)ptr.ToPointer();
         }
 
-        public static uint SizeOf<T>()
+        public static unsafe uint SizeOf<T>() where T : unmanaged
         {
-#if NETCORE
-            return (uint)Marshal.SizeOf<T>();
-#else
-            return (uint)Marshal.SizeOf(typeof(T));
-#endif
+            return (uint)sizeof(T);
         }
     }
 }

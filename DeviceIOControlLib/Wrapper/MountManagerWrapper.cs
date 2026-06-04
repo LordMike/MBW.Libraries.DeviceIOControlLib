@@ -69,7 +69,7 @@ namespace DeviceIOControlLib.Wrapper
 
             Encoding.Unicode.GetBytes(deviceName, 0, deviceName.Length, tmp, 2);
 
-            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.MountmgrQueryDosVolumePaths, tmp, 64, (uint)tmp.Length);
+            byte[] data = DeviceIoControlHelper.InvokeIoControlUnknownSize(Handle, IOControlCode.MountmgrQueryDosVolumePaths, tmp, 64);
 
             return new List<string>(Utils.ReadUnicodeStringArray(data, sizeof(uint)));
         }
