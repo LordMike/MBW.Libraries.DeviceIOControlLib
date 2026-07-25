@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <IsPackable>true</IsPackable>
     <TargetFrameworks>netstandard1.3;netstandard2.0</TargetFrameworks>
     <Description>Library to interact with Windows' DeviceIoControl method</Description>
     <PackageTags>Win32 DeviceIoControl</PackageTags>
