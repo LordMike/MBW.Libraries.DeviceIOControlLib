@@ -1,20 +1,28 @@
 {
-  "$schema": "https://github.com/LordMike/MBW.Tools.GhStandardContent/spec/StandardContent.json",
+  "$schema": "https://raw.githubusercontent.com/LordMike/MBW.Tools.GhStandardContent/master/spec/StandardContent.json",
   "meta": {
     "repo": "LordMike/MBW.Libraries.DeviceIOControlLib",
     "profiles": [
+      "standardCI",
       "standardContent",
-      "standardDotnet",
-      "standardNugetPush"
+      "standardDotnetBuild",
+      "standardNoDeploy"
     ],
     "files": [
       ".editorconfig",
       ".gitattributes",
-      ".github/workflows/dotnet.yml",
-      ".github/workflows/nuget.yml",
+      ".github/actions/build/action.yml",
+      ".github/actions/collect_publishables/action.yml",
+      ".github/actions/initialize_ci/action.yml",
+      ".github/actions/publish_docker/action.yml",
+      ".github/actions/publish_github_release/action.yml",
+      ".github/actions/publish_nuget/action.yml",
+      ".github/readme.md",
+      ".github/workflows/ci.yml",
+      ".github/workflows/deploy.yml",
       ".gitignore",
       "Directory.Build.props"
     ],
-    "last_updated": "2026-05-06T11:07:59.4827292+00:00"
+    "last_updated": "2026-07-25T22:29:47.6919040\u002B00:00"
   }
 }
